@@ -18,34 +18,50 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
+import abc
+import sys
+from typing import Optional, Tuple
+
+
 class Event:
-    """An Event.  `evt' is 'key' or somesuch."""
+    __slots__ = "type", "data", "raw"
 
-    __slots__ = "evt", "data", "raw"
-
-    def __init__(self, evt, data, raw=""):
-        self.evt = evt
+    def __init__(self, type_: str, data: Optional[str], raw: str = ""):
+        self.type = type_
         self.data = data
         self.raw = raw
 
     def __repr__(self):
-        return "Event({self.evt}, {self.data})"
+        return f"Event({self.name}, {self.data})"
 
     def __eq__(self, other):
+        if not isinstance(other, Event):
+            raise NotImplementedError(
+                f"cannot compare {self.__class__} with {other.__class__}"
+            )
         return (
-            self.evt == other.evt and self.data == other.data and self.raw == other.raw
+            self.type == other.type
+            and self.data == other.data
+            and self.raw == other.raw
         )
 
 
-class Console:
-    """Attributes:
+class Console(abc.ABC):
+    def __init__(
+        self,
+        height: Optional[int] = None,
+        width: Optional[int] = None,
+        encoding: Optional[str] = None,
+    ):
+        self.height = height
+        self.width = width
+        self.encoding = encoding or sys.getdefaultencoding()
 
-    screen,
-    height,
-    width,
-    """
+        self.screen = []  # FIXME: add type
 
-    def refresh(self, screen, xy):
+    # TODO: add type hints
+    @abc.abstractmethod
+    def refresh(self, screen, xy: Tuple[int, int]):
         pass
 
     def prepare(self):
@@ -54,7 +70,7 @@ class Console:
     def restore(self):
         pass
 
-    def move_cursor(self, x, y):
+    def move_cursor(self, x: int, y: int):
         pass
 
     def set_cursor_vis(self, vis):
@@ -63,40 +79,33 @@ class Console:
     def getheightwidth(self):
         """Return (height, width) where height and width are the height
         and width of the terminal window in characters."""
-        pass
 
-    def get_event(self, block=1):
+    @abc.abstractmethod
+    def get_event(self, block: bool = True):
         """Return an Event instance.  Returns None if |block| is false
         and there is no event pending, otherwise waits for the
         completion of an event."""
-        pass
 
     def beep(self):
         pass
 
     def clear(self):
         """Wipe the screen"""
-        pass
 
     def finish(self):
         """Move the cursor to the end of the display and otherwise get
         ready for end.  XXX could be merged with restore?  Hmm."""
-        pass
 
     def flushoutput(self):
         """Flush all output to the screen (assuming there's some
         buffering going on somewhere)."""
-        pass
 
     def forgetinput(self):
         """Forget all pending, but not yet processed input."""
-        pass
 
     def getpending(self):
         """Return the characters that have been typed but not yet
         processed."""
-        pass
 
     def wait(self):
         """Wait for an event."""
-        pass

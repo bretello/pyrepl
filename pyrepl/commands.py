@@ -19,9 +19,13 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+import abc
 import os
+from typing import TYPE_CHECKING
 
-from pyrepl import input  # noqa: F401
+if TYPE_CHECKING:
+    from .console import Event
+    from .reader import Reader
 
 # Catgories of actions:
 #  killing
@@ -33,23 +37,30 @@ from pyrepl import input  # noqa: F401
 # [completion]
 
 
-class Command:
-    finish = 0
-    kills_digit_arg = 1
+class Command(abc.ABC):
+    finish: int = 0
+    kills_digit_arg: int = 1
 
-    def __init__(self, reader, event_name, event):
+    def __init__(
+        self,
+        reader: "Reader",
+        event_name: str,
+        event: "Event",
+    ):
         self.reader = reader
         self.event = event
         self.event_name = event_name
 
+    @abc.abstractmethod
     def do(self):
-        pass
+        raise NotImplementedError
 
 
 class KillCommand(Command):
-    def kill_range(self, start, end):
+    def kill_range(self, start: int, end: int):
         if start == end:
             return
+
         r = self.reader
         b = r.buffer
         text = b[start:end]
@@ -62,7 +73,7 @@ class KillCommand(Command):
         else:
             r.kill_ring.append(text)
         r.pos = start
-        r.dirty = 1
+        r.dirty = False
 
 
 class YankCommand(Command):
@@ -113,24 +124,24 @@ class digit_arg(Command):
                     r.arg = 10 * r.arg - d
                 else:
                     r.arg = 10 * r.arg + d
-        r.dirty = 1
+        r.dirty = True
 
 
 class clear_screen(Command):
     def do(self):
         r = self.reader
         r.console.clear()
-        r.dirty = 1
+        r.dirty = True
 
 
 class refresh(Command):
     def do(self):
-        self.reader.dirty = 1
+        self.reader.dirty = True
 
 
 class repaint(Command):
     def do(self):
-        self.reader.dirty = 1
+        self.reader.dirty = True
         self.reader.console.repaint_prep()
 
 
@@ -160,21 +171,21 @@ class unix_line_discard(KillCommand):
 class unix_word_rubout(KillCommand):
     def do(self):
         r = self.reader
-        for _i in range(r.get_arg()):
+        for _ in range(r.get_arg()):
             self.kill_range(r.bow(), r.pos)
 
 
 class kill_word(KillCommand):
     def do(self):
         r = self.reader
-        for _i in range(r.get_arg()):
+        for _ in range(r.get_arg()):
             self.kill_range(r.pos, r.eow())
 
 
 class backward_kill_word(KillCommand):
     def do(self):
         r = self.reader
-        for _i in range(r.get_arg()):
+        for _ in range(r.get_arg()):
             self.kill_range(r.bow(), r.pos)
 
 
@@ -202,7 +213,7 @@ class yank_pop(YankCommand):
         t = r.kill_ring[-1]
         b[r.pos - repl : r.pos] = t
         r.pos = r.pos - repl + len(t)
-        r.dirty = 1
+        r.dirty = True
 
 
 class interrupt(FinishCommand):
@@ -226,14 +237,14 @@ class suspend(Command):
         r.console.prepare()
         r.pos = p
         r.posxy = 0, 0
-        r.dirty = 1
+        r.dirty = True
         r.console.screen = []
 
 
 class up(MotionCommand):
     def do(self):
         r = self.reader
-        for _i in range(r.get_arg()):
+        for _ in range(r.get_arg()):
             bol1 = r.bol()
             if bol1 == 0:
                 if r.historyi > 0:
@@ -255,7 +266,7 @@ class down(MotionCommand):
     def do(self):
         r = self.reader
         b = r.buffer
-        for _i in range(r.get_arg()):
+        for _ in range(r.get_arg()):
             bol1 = r.bol()
             eol1 = r.eol()
             if eol1 == len(b):
@@ -276,7 +287,7 @@ class down(MotionCommand):
 class left(MotionCommand):
     def do(self):
         r = self.reader
-        for _i in range(r.get_arg()):
+        for _ in range(r.get_arg()):
             p = r.pos - 1
             if p >= 0:
                 r.pos = p
@@ -288,7 +299,7 @@ class right(MotionCommand):
     def do(self):
         r = self.reader
         b = r.buffer
-        for _i in range(r.get_arg()):
+        for _ in range(r.get_arg()):
             p = r.pos + 1
             if p <= len(b):
                 r.pos = p
@@ -319,14 +330,14 @@ class end(MotionCommand):
 class forward_word(MotionCommand):
     def do(self):
         r = self.reader
-        for _i in range(r.get_arg()):
+        for _ in range(r.get_arg()):
             r.pos = r.eow()
 
 
 class backward_word(MotionCommand):
     def do(self):
         r = self.reader
-        for _i in range(r.get_arg()):
+        for _ in range(r.get_arg()):
             r.pos = r.bow()
 
 
@@ -357,18 +368,18 @@ class transpose_characters(EditCommand):
             del b[s]
             b.insert(t, c)
             r.pos = t
-            r.dirty = 1
+            r.dirty = True
 
 
 class backspace(EditCommand):
     def do(self):
         r = self.reader
         b = r.buffer
-        for _i in range(r.get_arg()):
+        for _ in range(r.get_arg()):
             if r.pos > 0:
                 r.pos -= 1
                 del b[r.pos]
-                r.dirty = 1
+                r.dirty = True
             else:
                 self.reader.error("can't backspace at start")
 
@@ -385,10 +396,10 @@ class delete(EditCommand):
             r.update_screen()
             r.console.finish()
             raise EOFError
-        for _i in range(r.get_arg()):
+        for _ in range(r.get_arg()):
             if r.pos != len(b):
                 del b[r.pos]
-                r.dirty = 1
+                r.dirty = True
             else:
                 self.reader.error("end of buffer")
 
@@ -401,20 +412,21 @@ class accept(FinishCommand):
 class help(Command):
     def do(self):
         self.reader.msg = self.reader.help_text
-        self.reader.dirty = 1
+        self.reader.dirty = True
 
 
 class invalid_key(Command):
     def do(self):
         pending = self.reader.console.getpending()
         s = "".join(self.event) + pending.data
-        self.reader.error("`%r' not bound" % s)
+        # FIXME: make sure f-string s is equivalentr to %r
+        self.reader.error(f"`{s}' not bound")
 
 
 class invalid_command(Command):
     def do(self):
         s = self.event_name
-        self.reader.error("command `%s' not known" % s)
+        self.reader.error(f"command `{s}' not known")
 
 
 class qIHelp(Command):

@@ -44,4 +44,10 @@ setup(
     packages=["pyrepl"],
     scripts=["pythoni", "pythoni1"],
     long_description=long_desc,
+    extras_require={
+        "testing": [
+            "pytest",
+            "pexpect",
+        ],
+    },
 )

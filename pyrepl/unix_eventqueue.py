@@ -24,6 +24,7 @@
 import os
 from collections import deque
 from termios import VERASE, tcgetattr
+from typing import Deque, Dict, Optional, Union
 
 from pyrepl import curses, keymap
 from pyrepl.console import Event
@@ -46,7 +47,7 @@ _keynames = {
 
 
 # function keys x in 1-20 -> fX: kfX
-_keynames.update(("f%d" % i, "kf%d" % i) for i in range(1, 21))
+_keynames.update((f"f{i}", f"kf{i}") for i in range(1, 21))
 
 # this is a bit of a hack: CTRL-left and CTRL-right are not standardized
 # termios sequences: each terminal emulator implements its own slightly
@@ -68,10 +69,13 @@ CTRL_ARROW_KEYCODE = {
 }
 
 
-def general_keycodes():
-    keycodes = {}
-    for key, tiname in list(_keynames.items()):
+def general_keycodes() -> Dict[bytes, str]:
+    keycodes: Dict[bytes, str] = {}
+    for key, tiname in _keynames.items():
         keycode = curses.tigetstr(tiname)
+        assert isinstance(keycode, bytes)
+        assert isinstance(key, str)
+
         trace("key {key} tiname {tiname} keycode {keycode!r}", **locals())
         if keycode:
             keycodes[keycode] = key
@@ -79,7 +83,7 @@ def general_keycodes():
     return keycodes
 
 
-def EventQueue(fd, encoding):
+def EventQueue(fd: int, encoding: str) -> "EncodedQueue":
     keycodes = general_keycodes()
     if os.isatty(fd):
         backspace = tcgetattr(fd)[6][VERASE]
@@ -90,39 +94,39 @@ def EventQueue(fd, encoding):
 
 
 class EncodedQueue:
-    def __init__(self, keymap, encoding):
+    def __init__(self, keymap: Dict[str, str], encoding: str):
         self.k = self.ck = keymap
-        self.events = deque()
+        self.events: Deque[Event] = deque()
         self.buf = bytearray()
         self.encoding = encoding
 
-    def get(self):
-        if self.events:
-            return self.events.popleft()
-        else:
+    def get(self) -> Optional[Event]:
+        if not self.events:
             return None
 
-    def empty(self):
+        return self.events.popleft()
+
+    def empty(self) -> bool:
         return not self.events
 
-    def flush_buf(self):
+    def flush_buf(self) -> bytearray:
         old = self.buf
         self.buf = bytearray()
         return old
 
-    def insert(self, event):
+    def insert(self, event: Event):
         trace("added event {event}", event=event)
         self.events.append(event)
 
-    def push(self, char):
-        ord_char = char if isinstance(char, int) else ord(char)
-        char = bytes(bytearray((ord_char,)))
+    def push(self, char: Union[bytes, str, int]):
+        ord_char: Union[int, str] = char if isinstance(char, int) else ord(char)
+        char_bytes = bytes(bytearray((ord_char,)))
         self.buf.append(ord_char)
-        if char in self.k:
+        if char_bytes in self.k:
             if self.k is self.ck:
                 # sanity check, buffer is empty when a special key comes
                 assert len(self.buf) == 1
-            k = self.k[char]
+            k = self.k[char_bytes]
             trace("found map {k!r}", k=k)
             if isinstance(k, dict):
                 self.k = k
@@ -145,6 +149,6 @@ class EncodedQueue:
                 decoded = bytes(self.buf).decode(self.encoding)
             except UnicodeError:
                 return
-            else:
-                self.insert(Event("key", decoded, self.flush_buf()))
+
+            self.insert(Event("key", decoded, self.flush_buf()))
             self.k = self.ck

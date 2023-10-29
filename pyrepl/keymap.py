@@ -53,6 +53,10 @@ Examples:
    - all of these are the tab character.  Can you think of any more?
 """
 
+from typing import Dict, List, Optional, Tuple, Union
+
+KeyMap = Tuple[Tuple[str, str], ...]
+
 _escapes = {
     "\\": "\\",
     "'": "'",
@@ -113,101 +117,97 @@ class KeySpecError(Exception):
     pass
 
 
-def _parse_key1(key, s):
+def _parse_key1(key: str, s: int) -> Tuple[List[str], int]:
     ctrl = 0
     meta = 0
-    ret = ""
+    ret: Optional[str] = None
     while not ret and s < len(key):
-        if key[s] == "\\":
-            c = key[s + 1].lower()
-            if c in _escapes:
-                ret = _escapes[c]
-                s += 2
-            elif c == "c":
-                if key[s + 2] != "-":
-                    raise KeySpecError(
-                        "\\C must be followed by `-' (char %d of %s)"
-                        % (s + 2, repr(key))
-                    )
-                if ctrl:
-                    raise KeySpecError(
-                        "doubled \\C- (char %d of %s)" % (s + 1, repr(key))
-                    )
-                ctrl = 1
-                s += 3
-            elif c == "m":
-                if key[s + 2] != "-":
-                    raise KeySpecError(
-                        "\\M must be followed by `-' (char %d of %s)"
-                        % (s + 2, repr(key))
-                    )
-                if meta:
-                    raise KeySpecError(
-                        "doubled \\M- (char %d of %s)" % (s + 1, repr(key))
-                    )
-                meta = 1
-                s += 3
-            elif c.isdigit():
-                n = key[s + 1 : s + 4]
-                ret = chr(int(n, 8))
-                s += 4
-            elif c == "x":
-                n = key[s + 2 : s + 4]
-                ret = chr(int(n, 16))
-                s += 4
-            elif c == "<":
-                t = key.find(">", s)
-                if t == -1:
-                    raise KeySpecError(
-                        "unterminated \\< starting at char %d of %s"
-                        % (s + 1, repr(key))
-                    )
-                ret = key[s + 2 : t].lower()
-                if ret not in _keynames:
-                    raise KeySpecError(
-                        "unrecognised keyname `%s' at char %d of %s"
-                        % (ret, s + 2, repr(key))
-                    )
-                ret = _keynames[ret]
-                s = t + 1
-            else:
-                raise KeySpecError(
-                    "unknown backslash escape %s at char %d of %s"
-                    % (repr(c), s + 2, repr(key))
-                )
-        else:
+        if key[s] != "\\":
             ret = key[s]
             s += 1
+            continue
+
+        c = key[s + 1].lower()
+        if c in _escapes:
+            ret = _escapes[c]
+            s += 2
+        elif c == "c":
+            if key[s + 2] != "-":
+                raise KeySpecError(
+                    f"\\C must be followed by `-' (char {s+2} of {repr(key)})"
+                )
+            if ctrl:
+                raise KeySpecError(f"doubled \\C- (char {s+1} of {repr(key)})")
+            ctrl = 1
+            s += 3
+        elif c == "m":
+            if key[s + 2] != "-":
+                raise KeySpecError(
+                    f"\\M must be followed by `-' (char {s+2} of {repr(key)})"
+                )
+            if meta:
+                raise KeySpecError(f"doubled \\M- (char {s+1} of {repr(key)})")
+            meta = 1
+            s += 3
+        elif c.isdigit():
+            n = key[s + 1 : s + 4]
+            ret = chr(int(n, 8))
+            s += 4
+        elif c == "x":
+            n = key[s + 2 : s + 4]
+            ret = chr(int(n, 16))
+            s += 4
+        elif c == "<":
+            t = key.find(">", s)
+            if t == -1:
+                raise KeySpecError(
+                    f"unterminated \\< starting at char {s+1} of {repr(key)}"
+                )
+            ret = key[s + 2 : t].lower()
+            if ret not in _keynames:
+                raise KeySpecError(
+                    f"unrecognised keyname `{ret}' at char {s+2} of {repr(key)}"
+                )
+            ret = _keynames[ret]
+            s = t + 1
+        else:
+            raise KeySpecError(
+                f"unknown backslash escape {repr(c)} at char {s+2} of {repr(key)}"
+            )
     if ctrl:
+        assert ret
         if len(ret) > 1:
             raise KeySpecError("\\C- must be followed by a character")
         ret = chr(ord(ret) & 0x1F)  # curses.ascii.ctrl()
-    ret = ["\x1b", ret] if meta else [ret]
-    return ret, s
+
+    assert ret
+    return (["\x1b", ret] if meta else [ret], s)
 
 
-def parse_keys(key):
+def parse_keys(key: str) -> List[str]:
     s = 0
-    r = []
+    r: List[str] = []
     while s < len(key):
         k, s = _parse_key1(key, s)
         r.extend(k)
     return r
 
 
-def compile_keymap(keymap, empty=b""):
-    r = {}
-    for key, value in list(keymap.items()):
+def compile_keymap(keymap, empty: bytes = b""):
+    res = {}
+
+    for key, value in keymap.items():
         first = key[:1] if isinstance(key, bytes) else key[0]
-        r.setdefault(first, {})[key[1:]] = value
-    for key, value in list(r.items()):
+
+        res.setdefault(first, {})[key[1:]] = value
+
+    for key, value in res.items():
         if empty in value:
             if len(value) != 1:
-                raise KeySpecError(
-                    f"key definitions for {list(value.values())} clash"
-                )
-            else:
-                r[key] = value[empty]
+                raise KeySpecError(f"key definitions for {list(value.values())} clash")
+
+            res[key] = value[empty]
         else:
-            r[key] = compile_keymap(value, empty)
-    return r
+            res[key] = compile_keymap(value, empty)
+
+    return res

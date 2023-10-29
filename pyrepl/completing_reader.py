@@ -19,9 +19,13 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import re
+from typing import TYPE_CHECKING
 
 from pyrepl import commands, reader
 from pyrepl.reader import Reader
+
+if TYPE_CHECKING:
+    from .console import Console
 
 
 def prefix(wordlist, j=0):
@@ -217,14 +221,14 @@ class CompletingReader(Reader):
     """
 
     # see the comment for the complete command
-    assume_immutable_completions = True
-    use_brackets = True  # display completions inside []
-    sort_in_column = False
+    assume_immutable_completions: bool = True
+    use_brackets: bool = True  # display completions inside []
+    sort_in_column: bool = False
 
     def collect_keymap(self):
         return super().collect_keymap() + ((r"\t", "complete"),)
 
-    def __init__(self, console):
+    def __init__(self, console: "Console"):
         super().__init__(console)
         self.cmpltn_menu = ["[ menu 1 ]", "[ menu 2 ]"]
         self.cmpltn_menu_vis = 0
@@ -257,7 +261,7 @@ class CompletingReader(Reader):
         self.cmpltn_menu_end = 0
         self.cmpltn_menu_choices = []
 
-    def get_stem(self):
+    def get_stem(self) -> str:
         st = self.syntax_table
         SW = reader.SYNTAX_WORD
         b = self.buffer
@@ -266,25 +270,5 @@ class CompletingReader(Reader):
             p -= 1
         return "".join(b[p + 1 : self.pos])
 
-    def get_completions(self, stem):
+    def get_completions(self, stem: str) -> list[str]:
         return []
-
-
-def test():
-    class TestReader(CompletingReader):
-        def get_completions(self, stem):
-            return [
-                s for l in self.history for s in l.split() if s and s.startswith(stem)
-            ]
-
-    reader = TestReader()
-    reader.ps1 = "c**> "
-    reader.ps2 = "c/*> "
-    reader.ps3 = "c|*> "
-    reader.ps4 = r"c\*> "
-    while reader.readline():
-        pass
-
-
-if __name__ == "__main__":
-    test()

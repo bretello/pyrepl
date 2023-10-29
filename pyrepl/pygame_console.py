@@ -38,14 +38,6 @@ rmargin = 5
 tmargin = 5
 bmargin = 5
 
-try:
-    bool
-except NameError:
-
-    def bool(x):
-        return not not x
-
-
 modcolors = {
     K_LCTRL: 1,
     K_RCTRL: 1,
@@ -106,6 +98,7 @@ class PyGameConsole(Console):
     """
 
     def __init__(self):
+        super().__init__()
         self.pygame_screen = pygame.display.set_mode((800, 600))
         pygame.font.init()
         pygame.key.set_repeat(500, 30)
@@ -167,12 +160,13 @@ class PyGameConsole(Console):
         if self.curs_vis:
             self.pygame_screen.blit(self.cursor, self.char_pos(cx, cy))
         for line in screen:
-            if 0 <= line_top + self.scroll <= (600 - bmargin - tmargin - self.fh):
-                if line:
-                    ren = self.font.render(line, 1, colors.fg)
-                    self.pygame_screen.blit(
-                        ren, (lmargin, tmargin + line_top + self.scroll)
-                    )
+            if (
+                0 <= (line_top + self.scroll) <= (600 - bmargin - tmargin - self.fh)
+            ) and line:
+                ren = self.font.render(line, 1, colors.fg)
+                self.pygame_screen.blit(
+                    ren, (lmargin, tmargin + line_top + self.scroll)
+                )
             line_top += self.fh
         pygame.display.update()
 
@@ -238,11 +232,11 @@ class PyGameConsole(Console):
             except KeyError:
                 return "invalid-key", pyg_event.str
 
-    def get_event(self, block=1):
+    def get_event(self, block=True):
         """Return an Event instance.  Returns None if |block| is false
         and there is no event pending, otherwise waits for the
         completion of an event."""
-        while 1:
+        while True:
             if self.event_queue:
                 return self.event_queue.pop(0)
             elif block:

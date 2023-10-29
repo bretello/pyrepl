@@ -17,33 +17,35 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from pyrepl import commands, reader
+from typing import TYPE_CHECKING, Dict, List
+
+from pyrepl import commands
 from pyrepl.reader import Reader as R
 
-isearch_keymap = tuple(
-    [("\\%03o" % c, "isearch-end") for c in range(256) if chr(c) != "\\"]
-    + [
+if TYPE_CHECKING:
+    from .console import Console
+    from .reader import KeyMap
+
+
+isearch_keymap: "KeyMap" = (
+    *((f"\\{c:03o}", "isearch-end") for c in range(256) if chr(c) != "\\"),
+    *(
         (c, "isearch-add-character")
         for c in map(chr, list(range(32, 127)))
         if c != "\\"
-    ]
-    + [
-        ("\\%03o" % c, "isearch-add-character")
+    ),
+    *(
+        (f"\\{c:03o}", "isearch-add-character")
         for c in range(256)
         if chr(c).isalpha() and chr(c) != "\\"
-    ]
-    + [
-        ("\\\\", "self-insert"),
-        (r"\C-r", "isearch-backwards"),
-        (r"\C-s", "isearch-forwards"),
-        (r"\C-c", "isearch-cancel"),
-        (r"\C-g", "isearch-cancel"),
-        (r"\<backspace>", "isearch-backspace"),
-    ]
+    ),
+    ("\\\\", "self-insert"),
+    (r"\C-r", "isearch-backwards"),
+    (r"\C-s", "isearch-forwards"),
+    (r"\C-c", "isearch-cancel"),
+    (r"\C-g", "isearch-cancel"),
+    (r"\<backspace>", "isearch-backspace"),
 )
-
-if "c" in globals():
-    del c  # noqa: F821
 
 ISEARCH_DIRECTION_NONE = ""
 ISEARCH_DIRECTION_BACKWARDS = "r"
@@ -207,7 +209,7 @@ class HistoricalReader(R):
         HistoricalReader instance methods.
     """
 
-    def collect_keymap(self):
+    def collect_keymap(self) -> "KeyMap":
         return super().collect_keymap() + (
             (r"\C-n", "next-history"),
             (r"\C-p", "previous-history"),
@@ -220,14 +222,14 @@ class HistoricalReader(R):
             (r"\<page up>", "first-history"),
         )
 
-    def __init__(self, console):
+    def __init__(self, console: "Console"):
         super().__init__(console)
-        self.history = []
+        self.history: List[str] = []
         self.historyi = 0
-        self.transient_history = {}
+        self.transient_history: Dict[int, str] = {}
         self.next_history = None
         self.isearch_direction = ISEARCH_DIRECTION_NONE
-        for c in [
+        for c in (
             next_history,
             previous_history,
             restore_history,
@@ -244,21 +246,21 @@ class HistoricalReader(R):
             isearch_forwards,
             isearch_backwards,
             operate_and_get_next,
-        ]:
+        ):
             self.commands[c.__name__] = c
             self.commands[c.__name__.replace("_", "-")] = c
         from pyrepl import input
 
         self.isearch_trans = input.KeymapTranslator(
-            isearch_keymap, invalid_cls=isearch_end, character_cls=isearch_add_character
+            isearch_keymap,
+            invalid_cls=isearch_end,
+            character_cls=isearch_add_character,
         )
 
-    def select_item(self, i):
-        self.transient_history[self.historyi] = self.get_unicode()
+    def select_item(self, i: int):
+        self.transient_history[self.historyi] = self.get_str()
         buf = self.transient_history.get(i)
-        if buf is None:
-            buf = self.history[i]
-        self.buffer = list(buf)
+        self.buffer = list(buf or self.history[i])
         self.historyi = i
         self.pos = len(self.buffer)
         self.dirty = 1
@@ -266,8 +268,8 @@ class HistoricalReader(R):
     def get_item(self, i):
         if i != len(self.history):
             return self.transient_history.get(i, self.history[i])
-        else:
-            return self.transient_history.get(i, self.get_unicode())
+
+        return self.transient_history.get(i, self.get_str())
 
     def prepare(self):
         super().prepare()
@@ -289,37 +291,37 @@ class HistoricalReader(R):
         if cursor_on_line and self.isearch_direction != ISEARCH_DIRECTION_NONE:
             d = "rf"[self.isearch_direction == ISEARCH_DIRECTION_FORWARDS]
             return f"({d}-search `{self.isearch_term}') "
-        else:
-            return super().get_prompt(lineno, cursor_on_line)
+
+        return super().get_prompt(lineno, cursor_on_line)
 
     def isearch_next(self):
         st = self.isearch_term
         p = self.pos
         i = self.historyi
-        s = self.get_unicode()
+        s = self.get_str()
         forwards = self.isearch_direction == ISEARCH_DIRECTION_FORWARDS
-        while 1:
+        while True:
             p = s.find(st, p + 1) if forwards else s.rfind(st, 0, p + len(st) - 1)
             if p != -1:
                 self.select_item(i)
                 self.pos = p
                 return
-            elif (forwards and i == len(self.history) - 1) or (not forwards and i == 0):
+            if (forwards and i == len(self.history) - 1) or (not forwards and i == 0):
                 self.error("not found")
                 return
+
+            if forwards:
+                i += 1
+                s = self.get_item(i)
+                p = -1
             else:
-                if forwards:
-                    i += 1
-                    s = self.get_item(i)
-                    p = -1
-                else:
-                    i -= 1
-                    s = self.get_item(i)
-                    p = len(s)
+                i -= 1
+                s = self.get_item(i)
+                p = len(s)
 
     def finish(self):
         super().finish()
-        ret = self.get_unicode()
+        ret = self.get_str()
         for i, t in list(self.transient_history.items()):
             if i < len(self.history) and i != self.historyi:
                 self.history[i] = t

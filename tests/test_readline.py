@@ -21,22 +21,12 @@ def test_readline():
     assert isinstance(result, bytes)
 
 
-def test_readline_returns_unicode():
+def test_input():
     master, slave = pty.openpty()
     readline_wrapper = _ReadlineWrapper(slave, slave)
     os.write(master, b"input\n")
 
-    result = readline_wrapper.get_reader().readline(returns_unicode=True)
-    assert result == "input"
-    assert isinstance(result, str)
-
-
-def test_raw_input():
-    master, slave = pty.openpty()
-    readline_wrapper = _ReadlineWrapper(slave, slave)
-    os.write(master, b"input\n")
-
-    result = readline_wrapper.raw_input("prompt:")
+    result = readline_wrapper.input("prompt:")
     assert result == "input"
     assert isinstance(result, str)
 

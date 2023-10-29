@@ -1,14 +1,20 @@
+import logging
 import os
+
+logger = logging.getLogger("PYREPL_TRACE")
 
 trace_filename = os.environ.get("PYREPL_TRACE")
 
-trace_file = open(trace_filename, "a") if trace_filename is not None else None
+if trace_filename:
+    logger.setLevel(logging.DEBUG)
+    fh = logging.FileHandler(trace_filename)
+    fh.setLevel(logging.DEBUG)
+    logger.addHandler(fh)
 
 
 def trace(line, *k, **kw):
-    if trace_file is None:
+    if not trace_filename:
         return
     if k or kw:
         line = line.format(*k, **kw)
-    trace_file.write(line + "\n")
-    trace_file.flush()
+    logger.debug(line)

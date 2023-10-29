@@ -147,11 +147,10 @@ def _parse_key1(key, s):
                 try:
                     ret = _keynames[key[s + 2 : t].lower()]
                     s = t + 1
-                except KeyError:
+                except KeyError as exc:
                     raise KeySpecError(
-                        "unrecognised keyname `%s' at char %d of %s"
-                        % (key[s + 2 : t], s + 2, repr(key))
-                    )
+                        f"unrecognised keyname `{key[s+2:t]}' at char {s+2} of {repr(key)}"
+                    ) from exc
                 if ret is None:
                     return None, s
             else:
@@ -187,9 +186,7 @@ def _compile_keymap(keymap):
     for key, value in list(r.items()):
         if () in value:
             if len(value) != 1:
-                raise KeySpecError(
-                    f"key definitions for {list(value.values())} clash"
-                )
+                raise KeySpecError(f"key definitions for {list(value.values())} clash")
             else:
                 r[key] = value[()]
         else:

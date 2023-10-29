@@ -23,7 +23,7 @@ def start_child():
     def start_child_func(env_update=None):
         assert not ret_childs, "child started already"
 
-        env = {k: v for k, v in list(os.environ.items()) if k in ("TERM",)}
+        env = {k: v for k, v in os.environ.items() if k in ("TERM",)}
         if env_update:
             env.update(env_update)
         child = pexpect.spawn(sys.executable, timeout=5, env=env)

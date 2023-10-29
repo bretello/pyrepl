@@ -26,10 +26,10 @@ import re
 import select
 import signal
 import struct
-import sys
 import termios
 import time
 from fcntl import ioctl
+from typing import List, Optional, Tuple, Union
 
 from . import curses
 from .console import Console, Event
@@ -42,11 +42,6 @@ class InvalidTerminal(RuntimeError):
     pass
 
 
-try:
-    str
-except NameError:
-    str = str
-
 _error = (termios.error, curses.error, InvalidTerminal)
 
 # there are arguments for changing this to "refresh"
@@ -56,48 +51,43 @@ FIONREAD = getattr(termios, "FIONREAD", None)
 TIOCGWINSZ = getattr(termios, "TIOCGWINSZ", None)
 
 
-def _my_getstr(cap, optional=0):
-    r = curses.tigetstr(cap)
+def _my_getstr(capability: str, optional: bool = False):
+    r = curses.tigetstr(capability)
     if not optional and r is None:
         raise InvalidTerminal(
-            "terminal doesn't have the required '%s' capability" % cap
+            f"terminal doesn't have the required '{capability}' capability"
         )
     return r
 
 
-# at this point, can we say: AAAAAAAAAAAAAAAAAAAAAARGH!
-def maybe_add_baudrate(dict, rate):
-    name = "B%d" % rate
-    if hasattr(termios, name):
-        dict[getattr(termios, name)] = rate
-
-
-ratedict = {}
-for r in [
+rates = {}
+for rate in (
     0,
+    50,
+    75,
     110,
-    115200,
-    1200,
     134,
     150,
-    1800,
-    19200,
     200,
-    230400,
-    2400,
     300,
-    38400,
-    460800,
-    4800,
-    50,
-    57600,
     600,
-    75,
+    1200,
+    1800,
+    2400,
+    4800,
     9600,
-]:
-    maybe_add_baudrate(ratedict, r)
+    19200,
+    38400,
+    57600,
+    115200,
+    230400,
+    460800,
+):
+    name = f"B{rate}"
+    with contextlib.suppress(AttributeError):
+        rates[getattr(termios, name)] = rate
 
-del r, maybe_add_baudrate
+del rate
 
 delayprog = re.compile(b"\\$<([0-9]+)((?:/|\\*){0,2})>")
 
@@ -121,19 +111,41 @@ except AttributeError:
 POLLIN = getattr(select, "POLLIN", None)
 
 
-required_curses_tistrings = "bel clear cup el"
+required_curses_tistrings = ("bel", "clear", "cup", "el")
 optional_curses_tistrings = (
-    "civis cnorm cub cub1 cud cud1 cud cud1 cuf "
-    "cuf1 cuu cuu1 dch dch1 hpa ich ich1 ind pad ri rmkx smkx"
+    "civis",
+    "cnorm",
+    "cub",
+    "cub1",
+    "cud",
+    "cud1",
+    "cuf",
+    "cuf1",
+    "cuu",
+    "cuu1",
+    "dch",
+    "dch1",
+    "hpa",
+    "ich",
+    "ich1",
+    "ind",
+    "pad",
+    "ri",
+    "rmkx",
+    "smkx",
 )
 
 
 class UnixConsole(Console):
-    def __init__(self, f_in=0, f_out=1, term=None, encoding=None):
-        if encoding is None:
-            encoding = sys.getdefaultencoding()
-
-        self.encoding = encoding
+    def __init__(
+        self,
+        f_in: int = 0,
+        f_out: int = 1,
+        term: Optional[str] = None,
+        encoding: Optional[str] = None,
+    ):
+        super().__init__(encoding=encoding)
+        self.__buffer: List[Tuple[Union[bytes, str], bool]] = []
 
         if isinstance(f_in, int):
             self.input_fd = f_in
@@ -150,41 +162,41 @@ class UnixConsole(Console):
         curses.setupterm(term, self.output_fd)
         self.term = term
 
-        for name in required_curses_tistrings.split():
-            setattr(self, "_" + name, _my_getstr(name))
+        for name in required_curses_tistrings:
+            setattr(self, f"_{name}", _my_getstr(name))
 
-        for name in optional_curses_tistrings.split():
-            setattr(self, "_" + name, _my_getstr(name, optional=1))
+        for name in optional_curses_tistrings:
+            setattr(self, f"_{name}", _my_getstr(name, optional=True))
 
-        ## work out how we're going to sling the cursor around
+        # work out how we're going to sling the cursor around
         # hpa don't work in windows telnet :-(
-        if False:
+        if False and self._hpa:
             self.__move_x = self.__move_x_hpa
-        elif self._cub and self._cuf:
-            self.__move_x = self.__move_x_cub_cuf
-        elif self._cub1 and self._cuf1:
-            self.__move_x = self.__move_x_cub1_cuf1
+        elif self._cub and self._cuf:  # type: ignore[attr-defined]
+            self.__move_x = self.__move_x_cub_cuf  # type: ignore[has-type]
+        elif self._cub1 and self._cuf1:  # type: ignore[attr-defined]
+            self.__move_x = self.__move_x_cub1_cuf1  # type: ignore[has-type]
         else:
             raise RuntimeError("insufficient terminal (horizontal)")
 
-        if self._cuu and self._cud:
+        if self._cuu and self._cud:  # type: ignore[attr-defined]
             self.__move_y = self.__move_y_cuu_cud
-        elif self._cuu1 and self._cud1:
+        elif self._cuu1 and self._cud1:  # type: ignore[attr-defined]
             self.__move_y = self.__move_y_cuu1_cud1
         else:
             raise RuntimeError("insufficient terminal (vertical)")
 
-        if self._dch1:
-            self.dch1 = self._dch1
-        elif self._dch:
-            self.dch1 = curses.tparm(self._dch, 1)
+        if self._dch1:  # type: ignore[attr-defined]
+            self.dch1 = self._dch1  # type: ignore[attr-defined]
+        elif self._dch:  # type: ignore[attr-defined]
+            self.dch1 = curses.tparm(self._dch, 1)  # type: ignore[attr-defined]
         else:
             self.dch1 = None
 
-        if self._ich1:
-            self.ich1 = self._ich1
-        elif self._ich:
-            self.ich1 = curses.tparm(self._ich, 1)
+        if self._ich1:  # type: ignore[attr-defined]
+            self.ich1 = self._ich1  # type: ignore[attr-defined]
+        elif self._ich:  # type: ignore[attr-defined]
+            self.ich1 = curses.tparm(self._ich, 1)  # type: ignore[attr-defined]
         else:
             self.ich1 = None
 
@@ -252,7 +264,7 @@ class UnixConsole(Console):
             y,
             oldline,
             newline,
-        ) in zip(list(range(offset, offset + height)), oldscr, newscr):
+        ) in zip(range(offset, offset + height), oldscr, newscr):
             if oldline != newline:
                 self.__write_changed_line(y, oldline, newline, px)
 
@@ -329,57 +341,57 @@ class UnixConsole(Console):
             # to the left margin should work to get to a known position.
             self.move_cursor(0, y)
 
-    def __write(self, text):
-        self.__buffer.append((text, 0))
+    def __write(self, text: str):
+        self.__buffer.append((text, False))
 
     def __write_code(self, fmt, *args):
-        self.__buffer.append((curses.tparm(fmt, *args), 1))
+        self.__buffer.append((curses.tparm(fmt, *args), True))
 
     def __maybe_write_code(self, fmt, *args):
         if fmt:
             self.__write_code(fmt, *args)
 
-    def __move_y_cuu1_cud1(self, y):
+    def __move_y_cuu1_cud1(self, y: int):
         dy = y - self.__posxy[1]
         if dy > 0:
-            self.__write_code(dy * self._cud1)
+            self.__write_code(dy * self._cud1)  # type: ignore[attr-defined]
         elif dy < 0:
-            self.__write_code((-dy) * self._cuu1)
+            self.__write_code((-dy) * self._cuu1)  # type: ignore[attr-defined]
 
-    def __move_y_cuu_cud(self, y):
+    def __move_y_cuu_cud(self, y: int):
         dy = y - self.__posxy[1]
         if dy > 0:
-            self.__write_code(self._cud, dy)
+            self.__write_code(self._cud, dy)  # type: ignore[attr-defined]
         elif dy < 0:
-            self.__write_code(self._cuu, -dy)
+            self.__write_code(self._cuu, -dy)  # type: ignore[attr-defined]
 
-    def __move_x_hpa(self, x):
+    def __move_x_hpa(self, x: int):
         if x != self.__posxy[0]:
-            self.__write_code(self._hpa, x)
+            self.__write_code(self._hpa, x)  # type: ignore[attr-defined]
 
-    def __move_x_cub1_cuf1(self, x):
+    def __move_x_cub1_cuf1(self, x: int):
         dx = x - self.__posxy[0]
         if dx > 0:
-            self.__write_code(self._cuf1 * dx)
+            self.__write_code(self._cuf1 * dx)  # type: ignore[attr-defined]
         elif dx < 0:
-            self.__write_code(self._cub1 * (-dx))
+            self.__write_code(self._cub1 * (-dx))  # type: ignore[attr-defined]
 
-    def __move_x_cub_cuf(self, x):
+    def __move_x_cub_cuf(self, x: int):
         dx = x - self.__posxy[0]
         if dx > 0:
-            self.__write_code(self._cuf, dx)
+            self.__write_code(self._cuf, dx)  # type: ignore[attr-defined]
         elif dx < 0:
-            self.__write_code(self._cub, -dx)
+            self.__write_code(self._cub, -dx)  # type: ignore[attr-defined]
 
-    def __move_short(self, x, y):
+    def __move_short(self, x: int, y: int):
         self.__move_x(x)
         self.__move_y(y)
 
-    def __move_tall(self, x, y):
+    def __move_tall(self, x: int, y: int):
         assert 0 <= y - self.__offset < self.height, y - self.__offset
-        self.__write_code(self._cup, y - self.__offset, x)
+        self.__write_code(self._cup, y - self.__offset, x)  # type: ignore[attr-defined]
 
-    def move_cursor(self, x, y):
+    def move_cursor(self, x: int, y: int):
         if y < self.__offset or y >= self.__offset + self.height:
             self.event_queue.insert(Event("scroll", None))
         else:
@@ -436,13 +448,14 @@ class UnixConsole(Console):
         if self.old_sigwinch != signal.SIG_DFL:
             self.old_sigwinch(signum, frame)
 
-    def push_char(self, char):
+    def push_char(self, char: bytes):
         trace("push char {char!r}", char=char)
         self.event_queue.push(char)
 
-    def get_event(self, block=1):
+    def get_event(self, block: bool = True):
+        assert isinstance(block, bool)
         while self.event_queue.empty():
-            while 1:
+            while True:
                 # All hail Unix!
                 try:
                     self.push_char(os.read(self.input_fd, 1))
@@ -450,10 +463,8 @@ class UnixConsole(Console):
                     if err.errno == errno.EINTR:
                         if not self.event_queue.empty():
                             return self.event_queue.get()
-                        else:
-                            continue
-                    else:
-                        raise
+                        continue
+                    raise
                 else:
                     break
             if not block:
@@ -532,8 +543,8 @@ class UnixConsole(Console):
         # using .get() means that things will blow up
         # only if the bps is actually needed (which I'm
         # betting is pretty unlkely)
-        bps = ratedict.get(self.__svtermstate.ospeed)
-        while 1:
+        bps = rates.get(self.__svtermstate.ospeed)
+        while True:
             m = prog.search(fmt)
             if not m:
                 os.write(self.output_fd, fmt)
@@ -548,7 +559,7 @@ class UnixConsole(Console):
                 nchars = (bps * delay) / 1000
                 os.write(self.output_fd, self._pad * nchars)
             else:
-                time.sleep(float(delay) / 1000.0)
+                time.sleep(delay / 1000.0)
 
     def finish(self):
         y = len(self.screen) - 1

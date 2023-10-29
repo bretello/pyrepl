@@ -21,45 +21,16 @@
 
 
 import unicodedata
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Tuple, Union
 
 from pyrepl import commands, input
 
-try:
-    str
-except NameError:
-    str = str
-    chr = chr
-    str = bytes, str
+if TYPE_CHECKING:
+    from .console import Console
+    from .keymap import KeyMap
 
 
-def _make_unctrl_map():
-    uc_map = {}
-    for c in map(chr, list(range(256))):
-        if unicodedata.category(c)[0] != "C":
-            uc_map[c] = c
-    for i in range(32):
-        c = chr(i)
-        uc_map[c] = "^" + chr(ord("A") + i - 1)
-    uc_map[b"\t"] = "    "  # display TABs as 4 characters
-    uc_map[b"\177"] = str("^?")
-    for i in range(256):
-        c = chr(i)
-        if c not in uc_map:
-            uc_map[c] = str("\\%03o") % i
-    return uc_map
-
-
-def _my_unctrl(c, u=_make_unctrl_map()):
-    if c in u:
-        return u[c]
-    else:
-        if unicodedata.category(c).startswith("C"):
-            return rb"\u%04x" % ord(c)
-        else:
-            return c
-
-
-def disp_str(buffer, join="".join, uc=_my_unctrl):
+def disp_str(buffer: List[str]) -> Tuple[str, List[int]]:
     """disp_str(buffer:string) -> (string, [int])
 
     Return the string that should be the printed represenation of
@@ -71,102 +42,123 @@ def disp_str(buffer, join="".join, uc=_my_unctrl):
 
     the list always contains 0s or 1s at present; it could conceivably
     go higher as and when unicode support happens."""
+
+    def _make_unctrl_map() -> Dict[str, str]:
+        uc_map: Dict[str, str] = {}
+        for c in map(chr, range(256)):
+            if unicodedata.category(c)[0] != "C":
+                uc_map[c] = c
+        for i in range(32):
+            c = chr(i)
+            uc_map[c] = f"^{chr(ord('A')+i -1)}"
+        uc_map["\t"] = "    "  # display TABs as 4 characters
+        uc_map["\177"] = "^?"
+        for i in range(256):
+            c = chr(i)
+            if c not in uc_map:
+                uc_map[c] = f"\\{i:03o}"
+        return uc_map
+
+    def mapper(c):
+        u = _make_unctrl_map()
+
+        if c in u:
+            return u[c]
+
+        if unicodedata.category(c).startswith("C"):
+            return rf"\u{ord(c):04x}".encode()
+
+        return c
+
     # disp_str proved to be a bottleneck for large inputs,
     # so it needs to be rewritten in C; it's not required though.
-    s = [uc(x) for x in buffer]
+    s = [mapper(x) for x in buffer]
     b = []  # XXX: bytearray
     for x in s:
         b.append(1)
         b.extend([0] * (len(x) - 1))
-    return join(s), b
+    return "".join(s), b
 
-
-del _my_unctrl
-
-del _make_unctrl_map
 
 # syntax classes:
 
-[SYNTAX_WHITESPACE, SYNTAX_WORD, SYNTAX_SYMBOL] = list(range(3))
+SYNTAX_WHITESPACE, SYNTAX_WORD, SYNTAX_SYMBOL = 0, 1, 2
 
 
-def make_default_syntax_table():
+def make_default_syntax_table() -> Dict[str, int]:
     # XXX perhaps should use some unicodedata here?
     st = {}
     for c in map(chr, list(range(256))):
         st[c] = SYNTAX_SYMBOL
     for c in [a for a in map(chr, list(range(256))) if a.isalpha()]:
         st[c] = SYNTAX_WORD
-    st[str("\n")] = st[str(" ")] = SYNTAX_WHITESPACE
+    st["\n"] = st[" "] = SYNTAX_WHITESPACE
     return st
 
 
-default_keymap = tuple(
-    [
-        (r"\C-a", "beginning-of-line"),
-        (r"\C-b", "left"),
-        (r"\C-c", "interrupt"),
-        (r"\C-d", "delete"),
-        (r"\C-e", "end-of-line"),
-        (r"\C-f", "right"),
-        (r"\C-g", "cancel"),
-        (r"\C-h", "backspace"),
-        (r"\C-j", "accept"),
-        (r"\<return>", "accept"),
-        (r"\C-k", "kill-line"),
-        (r"\C-l", "clear-screen"),
-        (r"\C-m", "accept"),
-        (r"\C-q", "quoted-insert"),
-        (r"\C-t", "transpose-characters"),
-        (r"\C-u", "unix-line-discard"),
-        (r"\C-v", "quoted-insert"),
-        (r"\C-w", "unix-word-rubout"),
-        (r"\C-x\C-u", "upcase-region"),
-        (r"\C-y", "yank"),
-        (r"\C-z", "suspend"),
-        (r"\M-b", "backward-word"),
-        (r"\M-c", "capitalize-word"),
-        (r"\M-d", "kill-word"),
-        (r"\M-f", "forward-word"),
-        (r"\M-l", "downcase-word"),
-        (r"\M-t", "transpose-words"),
-        (r"\M-u", "upcase-word"),
-        (r"\M-y", "yank-pop"),
-        (r"\M--", "digit-arg"),
-        (r"\M-0", "digit-arg"),
-        (r"\M-1", "digit-arg"),
-        (r"\M-2", "digit-arg"),
-        (r"\M-3", "digit-arg"),
-        (r"\M-4", "digit-arg"),
-        (r"\M-5", "digit-arg"),
-        (r"\M-6", "digit-arg"),
-        (r"\M-7", "digit-arg"),
-        (r"\M-8", "digit-arg"),
-        (r"\M-9", "digit-arg"),
-        # (r'\M-\n', 'insert-nl'),
-        ("\\\\", "self-insert"),
-    ]
-    + [(c, "self-insert") for c in map(chr, list(range(32, 127))) if c != "\\"]
-    + [(c, "self-insert") for c in map(chr, list(range(128, 256))) if c.isalpha()]
-    + [
-        (r"\<up>", "up"),
-        (r"\<down>", "down"),
-        (r"\<left>", "left"),
-        (r"\<right>", "right"),
-        (r"\<insert>", "quoted-insert"),
-        (r"\<delete>", "delete"),
-        (r"\<backspace>", "backspace"),
-        (r"\M-\<backspace>", "backward-kill-word"),
-        (r"\<end>", "end-of-line"),  # was 'end'
-        (r"\<home>", "beginning-of-line"),  # was 'home'
-        (r"\<f1>", "help"),
-        (r"\EOF", "end"),  # the entries in the terminfo database for xterms
-        (r"\EOH", "home"),  # seem to be wrong.  this is a less than ideal
-        # workaround
-        (r"\<ctrl left>", "backward-word"),
-        (r"\<ctrl right>", "forward-word"),
-    ]
+default_keymap: "KeyMap" = (
+    (r"\C-a", "beginning-of-line"),
+    (r"\C-b", "left"),
+    (r"\C-c", "interrupt"),
+    (r"\C-d", "delete"),
+    (r"\C-e", "end-of-line"),
+    (r"\C-f", "right"),
+    (r"\C-g", "cancel"),
+    (r"\C-h", "backspace"),
+    (r"\C-j", "accept"),
+    (r"\<return>", "accept"),
+    (r"\C-k", "kill-line"),
+    (r"\C-l", "clear-screen"),
+    (r"\C-m", "accept"),
+    (r"\C-q", "quoted-insert"),
+    (r"\C-t", "transpose-characters"),
+    (r"\C-u", "unix-line-discard"),
+    (r"\C-v", "quoted-insert"),
+    (r"\C-w", "unix-word-rubout"),
+    (r"\C-x\C-u", "upcase-region"),
+    (r"\C-y", "yank"),
+    (r"\C-z", "suspend"),
+    (r"\M-b", "backward-word"),
+    (r"\M-c", "capitalize-word"),
+    (r"\M-d", "kill-word"),
+    (r"\M-f", "forward-word"),
+    (r"\M-l", "downcase-word"),
+    (r"\M-t", "transpose-words"),
+    (r"\M-u", "upcase-word"),
+    (r"\M-y", "yank-pop"),
+    (r"\M--", "digit-arg"),
+    (r"\M-0", "digit-arg"),
+    (r"\M-1", "digit-arg"),
+    (r"\M-2", "digit-arg"),
+    (r"\M-3", "digit-arg"),
+    (r"\M-4", "digit-arg"),
+    (r"\M-5", "digit-arg"),
+    (r"\M-6", "digit-arg"),
+    (r"\M-7", "digit-arg"),
+    (r"\M-8", "digit-arg"),
+    (r"\M-9", "digit-arg"),
+    # (r'\M-\n', 'insert-nl'),
+    ("\\\\", "self-insert"),
+    *((c, "self-insert") for c in map(chr, list(range(32, 127))) if c != "\\"),
+    *((c, "self-insert") for c in map(chr, list(range(128, 256))) if c.isalpha()),
+    (r"\<up>", "up"),
+    (r"\<down>", "down"),
+    (r"\<left>", "left"),
+    (r"\<right>", "right"),
+    (r"\<insert>", "quoted-insert"),
+    (r"\<delete>", "delete"),
+    (r"\<backspace>", "backspace"),
+    (r"\M-\<backspace>", "backward-kill-word"),
+    (r"\<end>", "end-of-line"),  # was 'end'
+    (r"\<home>", "beginning-of-line"),  # was 'home'
+    (r"\<f1>", "help"),
+    (r"\EOF", "end"),  # the entries in the terminfo database for xterms
+    (r"\EOH", "home"),  # seem to be wrong.  this is a less than ideal
+    # workaround
+    (r"\<ctrl left>", "backward-word"),
+    (r"\<ctrl right>", "forward-word"),
 )
+
 
 class Reader:
     """The Reader class implements the bare bones of a command reader,
@@ -223,22 +215,23 @@ class Reader:
         that we're done.
     """
 
-    help_text = """\
+    help_text: str = """\
 This is pyrepl.  Hear my roar.
 
 Helpful text may appear here at some point in the future when I'm
 feeling more loquacious than I am now."""
 
-    msg_at_bottom = True
+    msg_at_bottom: bool = True
 
-    def __init__(self, console):
-        self.buffer = []
+    def __init__(self, console: "Console"):
+        super().__init__()
+        self.buffer: List[str] = []
         self.ps1 = "->> "
         self.ps2 = "/>> "
         self.ps3 = "|.. "
         self.ps4 = r"\__ "
-        self.kill_ring = []
-        self.arg = None
+        self.kill_ring: List[str] = []
+        self.arg: Optional[str] = None  # TODO: CHECK TYPE
         self.finished = 0
         self.console = console
         self.commands = {}
@@ -254,11 +247,12 @@ feeling more loquacious than I am now."""
         self.syntax_table = make_default_syntax_table()
         self.input_trans_stack = []
         self.keymap = self.collect_keymap()
-        self.input_trans = input.KeymapTranslator(
+        self.input_translator = input.KeymapTranslator(
             self.keymap, invalid_cls="invalid-key", character_cls="self-insert"
         )
+        self.dirty = False
 
-    def collect_keymap(self):
+    def collect_keymap(self) -> "KeyMap":
         return default_keymap
 
     def calc_screen(self):
@@ -267,25 +261,25 @@ feeling more loquacious than I am now."""
         everything down and starts from scratch, which whilst not
         especially efficient is certainly simple(r).
         """
-        lines = self.get_unicode().split("\n")
+        lines = "".join(self.buffer).split("\n")
         screen = []
         screeninfo = []
         w = self.console.width - 1
         p = self.pos
-        for ln, line in zip(list(range(len(lines))), lines):
-            ll = len(line)
-            if 0 <= p <= ll:
+        for ln, line in enumerate(lines):
+            line_length = len(line)
+            if 0 <= p <= line_length:
                 if self.msg and not self.msg_at_bottom:
                     for mline in self.msg.split("\n"):
                         screen.append(mline)
                         screeninfo.append((0, []))
                 self.lxy = p, ln
-            prompt = self.get_prompt(ln, ll >= p >= 0)
+            prompt = self.get_prompt(ln, line_length >= p >= 0)
             while "\n" in prompt:
                 pre_prompt, _, prompt = prompt.partition("\n")
                 screen.append(pre_prompt)
                 screeninfo.append((0, []))
-            p -= ll + 1
+            p -= line_length + 1
             prompt, lp = self.process_prompt(prompt)
             l, l2 = disp_str(line)
             wrapcount = (len(l) + lp) // w
@@ -308,7 +302,7 @@ feeling more loquacious than I am now."""
                 screeninfo.append((0, []))
         return screen
 
-    def process_prompt(self, prompt):
+    def process_prompt(self, prompt: str) -> tuple[str, int]:
         """Process the prompt.
 
         This means calculate the length of the prompt. The character \x01
@@ -316,7 +310,7 @@ feeling more loquacious than I am now."""
         excluded from the length calculation.  So also a copy of the prompt
         is returned with these control characters removed."""
 
-        out_prompt = ""
+        out: list[str] = []
         l = len(prompt)
         pos = 0
         while True:
@@ -328,12 +322,13 @@ feeling more loquacious than I am now."""
                 break
             # Found start and end brackets, subtract from string length
             l = l - (e - s + 1)
-            out_prompt += prompt[pos:s] + prompt[s + 1 : e]
+            out.append(prompt[pos:s] + prompt[s + 1 : e])
             pos = e + 1
-        out_prompt += prompt[pos:]
-        return out_prompt, l
 
-    def bow(self, p=None):
+        out.append(prompt[pos:])
+        return "".join(out), l
+
+    def bow(self, p: Optional[int] = None) -> int:
         """Return the 0-based index of the word break preceding p most
         immediately.
 
@@ -366,7 +361,7 @@ feeling more loquacious than I am now."""
             p += 1
         return p
 
-    def bol(self, p=None):
+    def bol(self, p: Optional[int] = None) -> int:
         """Return the 0-based index of the line break preceding p most
         immediately.
 
@@ -380,7 +375,7 @@ feeling more loquacious than I am now."""
             p -= 1
         return p + 1
 
-    def eol(self, p=None):
+    def eol(self, p: Optional[int] = None) -> int:
         """Return the 0-based index of the line break following p most
         immediately.
 
@@ -392,20 +387,18 @@ feeling more loquacious than I am now."""
             p += 1
         return p
 
-    def get_arg(self, default=1):
+    def get_arg(self, default: int = 1):
         """Return any prefix argument that the user has supplied,
         returning `default' if there is None.  `default' defaults
         (groan) to 1."""
-        if self.arg is None:
-            return default
-        else:
-            return self.arg
+        return self.arg or default
 
-    def get_prompt(self, lineno, cursor_on_line):
+    def get_prompt(self, lineno: int, cursor_on_line):
         """Return what should be in the left-hand margin for line
         `lineno'."""
         if self.arg is not None and cursor_on_line:
-            return "(arg: %s) " % self.arg
+            return f"(arg: {self.arg}) "
+
         if "\n" in self.buffer:
             if lineno == 0:
                 res = self.ps2
@@ -423,13 +416,13 @@ feeling more loquacious than I am now."""
         return self._pscache[res]
 
     def push_input_trans(self, itrans):
-        self.input_trans_stack.append(self.input_trans)
-        self.input_trans = itrans
+        self.input_trans_stack.append(self.input_translator)
+        self.input_translator = itrans
 
     def pop_input_trans(self):
-        self.input_trans = self.input_trans_stack.pop()
+        self.input_translator = self.input_trans_stack.pop()
 
-    def pos2xy(self, pos):
+    def pos2xy(self, pos: int) -> tuple[int, int]:
         """Return the x, y coordinates of position 'pos'."""
         # this *is* incomprehensible, yes.
         y = 0
@@ -437,7 +430,7 @@ feeling more loquacious than I am now."""
         if pos == len(self.buffer):
             y = len(self.screeninfo) - 1
             p, l2 = self.screeninfo[y]
-            return p + len(l2) - 1, y
+            return (p + len(l2) - 1, y)
         else:
             for p, l2 in self.screeninfo:
                 l = l2.count(1)
@@ -453,24 +446,24 @@ feeling more loquacious than I am now."""
                 i += 1
             while l2[i] == 0:
                 i += 1
-            return p + i, y
+            return (p + i, y)
 
-    def insert(self, text):
+    def insert(self, text: str):
         """Insert 'text' at the insertion point."""
         self.buffer[self.pos : self.pos] = list(text)
         self.pos += len(text)
-        self.dirty = 1
+        self.dirty = True
 
     def update_cursor(self):
         """Move the cursor to reflect changes in self.pos"""
         self.cxy = self.pos2xy(self.pos)
         self.console.move_cursor(*self.cxy)
 
-    def after_command(self, cmd):
+    def after_command(self, cmd: commands.Command):
         """This function is called to allow post command cleanup."""
         if getattr(cmd, "kills_digit_arg", 1):
             if self.arg is not None:
-                self.dirty = 1
+                self.dirty = True
             self.arg = None
 
     def prepare(self):
@@ -484,16 +477,17 @@ feeling more loquacious than I am now."""
             self.finished = 0
             del self.buffer[:]
             self.pos = 0
-            self.dirty = 1
+            self.dirty = True
             self.last_command = None
             self._pscache = {}
         except:
             self.restore()
             raise
 
-    def last_command_is(self, klass):
+    def last_command_is(self, klass) -> bool:  # TODO: add type for `klass`
         if not self.last_command:
-            return 0
+            return False
+
         return issubclass(klass, self.last_command)
 
     def restore(self):
@@ -504,9 +498,9 @@ feeling more loquacious than I am now."""
         """Called when a command signals that we're finished."""
         pass
 
-    def error(self, msg="none"):
-        self.msg = "! " + msg + " "
-        self.dirty = 1
+    def error(self, msg: str = "none"):
+        self.msg = f"! {msg} "
+        self.dirty = True
         self.console.beep()
 
     def update_screen(self):
@@ -518,76 +512,81 @@ feeling more loquacious than I am now."""
         # this call sets up self.cxy, so call it first.
         screen = self.calc_screen()
         self.console.refresh(screen, self.cxy)
-        self.dirty = 0  # forgot this for a while (blush)
+        self.dirty = False
 
-    def do_cmd(self, cmd):
-        # print cmd
+    def do_cmd(self, cmd: Tuple[Union[str, type], Optional[str]]):
+        command: commands.Command
         if isinstance(cmd[0], str):
-            # XXX: unify to text
-            cmd = self.commands.get(cmd[0], commands.invalid_command)(self, *cmd)
+            command = self.commands.get(cmd[0], commands.invalid_command)(self, *cmd)
         elif isinstance(cmd[0], type):
-            cmd = cmd[0](self, *cmd)
+            command = cmd[0](self, *cmd)
         else:
             return  # nothing to do
 
-        cmd.do()
+        command.do()
 
-        self.after_command(cmd)
+        self.after_command(command)
 
         if self.dirty:
             self.refresh()
         else:
             self.update_cursor()
 
-        if not isinstance(cmd, commands.digit_arg):
-            self.last_command = cmd.__class__
+        if not isinstance(command, commands.digit_arg):
+            self.last_command = command.__class__
 
-        self.finished = cmd.finish
+        self.finished = command.finish
         if self.finished:
             self.console.finish()
             self.finish()
 
-    def handle1(self, block=1):
+    def handle1(self, block: bool = True) -> bool:
         """Handle a single event.  Wait as long as it takes if block
         is true (the default), otherwise return None if no event is
         pending."""
+        assert isinstance(block, bool)
 
         if self.msg:
             self.msg = ""
-            self.dirty = 1
+            self.dirty = True
 
-        while 1:
+        while True:
             event = self.console.get_event(block)
-            if not event:  # can only happen if we're not blocking
-                return None
+            if not event:
+                assert not block
+
+                return False
 
             translate = True
 
-            if event.evt == "key":
-                self.input_trans.push(event)
-            elif event.evt == "scroll":
-                self.refresh()
-            elif event.evt == "resize":
+            if event.type == "key":
+                self.input_translator.push(event)
+            elif event.type == "scroll" or event.type == "resize":
                 self.refresh()
             else:
                 translate = False
 
-            cmd = self.input_trans.get() if translate else (event.evt, event.data)
+            cmd = self.input_translator.get() if translate else (event.type, event.data)
 
             if cmd is None:
                 if block:
                     continue
                 else:
-                    return None
+                    return False
 
             self.do_cmd(cmd)
-            return 1
+            return True
 
-    def push_char(self, char):
+    def push_char(self, char: str):
+        assert hasattr(self.console, "push_char")
+
         self.console.push_char(char)
-        self.handle1(0)
+        self.handle1(block=False)
 
-    def readline(self, returns_unicode=False, startup_hook=None):
+    def readline(
+        self,
+        startup_hook: Optional[Callable[[], None]] = None,
+    ) -> bytes:
         """Read a line.  The implementation of this method also shows
         how to drive Reader if you want more control over the event
         loop."""
@@ -598,25 +597,20 @@ feeling more loquacious than I am now."""
             self.refresh()
             while not self.finished:
                 self.handle1()
-            if returns_unicode:
-                return self.get_unicode()
             return self.get_buffer()
         finally:
             self.restore()
 
     def bind(self, spec, command):
         self.keymap = self.keymap + ((spec, command),)
-        self.input_trans = input.KeymapTranslator(
+        self.input_translator = input.KeymapTranslator(
             self.keymap, invalid_cls="invalid-key", character_cls="self-insert"
         )
 
-    def get_buffer(self, encoding=None):
-        if encoding is None:
-            encoding = self.console.encoding
-        return str("").join(self.buffer).encode(self.console.encoding)
+    def get_buffer(self, encoding: Optional[str] = None) -> bytes:
+        return self.get_str().encode(encoding or self.console.encoding)
 
-    def get_unicode(self):
-        """Return the current buffer as a unicode string."""
+    def get_str(self) -> str:
         return "".join(self.buffer)
 
 

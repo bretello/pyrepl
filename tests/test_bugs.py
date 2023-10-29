@@ -18,14 +18,12 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import pytest
-
 from pyrepl.historical_reader import HistoricalReader
 
 from .infrastructure import EA, TestReader, read_spec
 
 # this test case should contain as-verbatim-as-possible versions of
 # (applicable) bug reports
-
 
 
 class HistoricalTestReader(HistoricalReader, TestReader):

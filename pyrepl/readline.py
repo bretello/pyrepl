@@ -93,10 +93,8 @@ class ReadlineAlikeReader(HistoricalReader, CompletingReader):
         result = []
         function = self.config.readline_completer
         if function is not None:
-            try:
+            with contextlib.suppress(UnicodeEncodeError):
                 stem = str(stem)  # rlcompleter.py seems to not like unicode
-            except UnicodeEncodeError:
-                pass  # but feed unicode anyway if we have no choice
             state = 0
             while True:
                 try:
@@ -167,10 +165,8 @@ class maybe_accept(commands.Command):
         #
         # if there are already several lines and the cursor
         # is not on the last one, always insert a new \n.
-        text = r.get_unicode()
-        if "\n" in r.buffer[r.pos :]:
-            r.insert("\n")
-        elif r.more_lines is not None and r.more_lines(text):
+        text = r.get_str()
+        if "\n" in r.buffer[r.pos :] or r.more_lines is not None and r.more_lines(text):
             r.insert("\n")
         else:
             self.finish = 1
@@ -201,18 +197,13 @@ class _ReadlineWrapper:
             self.reader.config = self.config
         return self.reader
 
-    def raw_input(self, prompt="") -> str:
+    def input(self, prompt="") -> str:
         try:
             reader = self.get_reader()
         except _error:
-            return _old_raw_input(prompt)
+            return _old_input(prompt) if _old_input is not None else input(prompt)
         reader.ps1 = prompt
 
-        # the builtin raw_input calls PyOS_StdioReadline, which flushes
-        # stdout/stderr before displaying the prompt. Try to mimic this
-        # behavior: it seems to be the correct thing to do, and moreover it
-        # mitigates this pytest issue:
-        # https://github.com/pytest-dev/pytest/issues/5134
         if self.stdout and hasattr(self.stdout, "flush"):
             self.stdout.flush()
         if self.stderr and hasattr(self.stderr, "flush"):
@@ -330,7 +321,7 @@ class _ReadlineWrapper:
         self.startup_hook = function
 
     def get_line_buffer(self):
-        return self.get_reader().get_unicode()
+        return self.get_reader().get_str()
 
     def _get_idxs(self):
         start = cursor = self.get_reader().pos
@@ -407,9 +398,8 @@ for _name, _ret in [
 
 
 def _setup():
-    # TODO: is the raw_input logic still required?
-    global _old_raw_input
-    if _old_raw_input is not None:
+    global _old_input
+    if _old_input is not None:
         return
     # don't run _setup twice
 
@@ -425,33 +415,11 @@ def _setup():
     _wrapper.f_out = f_out
     _wrapper.setup_std_streams(sys.stdin, sys.stdout, sys.stderr)
 
-    if "__pypy__" in sys.builtin_module_names:  # PyPy
+    import builtins
 
-        def _old_raw_input(prompt=""):
-            # sys.__raw_input__() is only called when stdin and stdout are
-            # as expected and are ttys.  If it is the case, then get_reader()
-            # should not really fail in _wrapper.raw_input().  If it still
-            # does, then we will just cancel the redirection and call again
-            # the built-in raw_input().
-            with contextlib.suppress(AttributeError):
-                del sys.__raw_input__
-            return input(prompt)
-
-        sys.__raw_input__ = _wrapper.raw_input
-
-    else:
-        # this is not really what readline.c does.  Better than nothing I guess
-        try:
-            import builtins
-
-            _old_raw_input = builtins.raw_input
-            builtins.raw_input = _wrapper.raw_input
-        except ImportError:
-            import builtins
-
-            _old_raw_input = builtins.input
-            builtins.input = _wrapper.raw_input
+    _old_input = builtins.input
+    builtins.input = _wrapper.input
 
 
-_old_raw_input = None
+_old_input = None
 _setup()

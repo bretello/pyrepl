@@ -33,26 +33,41 @@
 # [meta-key] is identified with [esc key].  We demand that any console
 # class does quite a lot towards emulating a unix terminal.
 
+import abc
 import pprint
 import unicodedata
 from collections import deque
+from typing import TYPE_CHECKING, Deque, List, Optional, Tuple
 
 from .trace import trace
 
+if TYPE_CHECKING:
+    from .console import Event
+    from .reader import KeyMap
 
-class InputTranslator:
-    def push(self, evt):
-        pass
 
+class InputTranslator(abc.ABC):
+    @abc.abstractmethod
+    def push(self, event: "Event"):
+        raise NotImplementedError
+
+    @abc.abstractmethod
     def get(self):
-        pass
+        raise NotImplementedError
 
+    @abc.abstractmethod
     def empty(self):
-        pass
+        raise NotImplementedError
 
 
 class KeymapTranslator(InputTranslator):
-    def __init__(self, keymap, verbose=0, invalid_cls=None, character_cls=None):
+    def __init__(
+        self,
+        keymap: "KeyMap",
+        verbose: bool = False,
+        invalid_cls: Optional[str] = None,  # FIXME: add type
+        character_cls: Optional[str] = None,  # FIXME: add type
+    ):
         self.verbose = verbose
         from pyrepl.keymap import compile_keymap, parse_keys
 
@@ -66,37 +81,40 @@ class KeymapTranslator(InputTranslator):
         if verbose:
             trace("[input] keymap: {}", pprint.pformat(d))
         self.k = self.ck = compile_keymap(d, ())
-        self.results = deque()
-        self.stack = []
+        self.results: Deque[Tuple[str, List[str]]] = deque()
+        self.stack: List[str] = []
 
-    def push(self, evt):
-        trace("[input] pushed {!r}", evt.data)
-        key = evt.data
+    def push(self, event: "Event"):
+        trace("[input] pushed {!r}", event.data)
+        key = event.data
         d = self.k.get(key)
         if isinstance(d, dict):
             trace("[input] transition")
             self.stack.append(key)
             self.k = d
-        else:
-            if d is None:
-                trace("[input] invalid")
-                if self.stack or len(key) > 1 or unicodedata.category(key) == "C":
-                    self.results.append((self.invalid_cls, self.stack + [key]))
-                else:
-                    # small optimization:
-                    self.k[key] = self.character_cls
-                    self.results.append((self.character_cls, [key]))
+            return
+
+        if d is None:
+            trace("[input] invalid")
+            if self.stack or len(key) > 1 or unicodedata.category(key) == "C":
+                assert self.invalid_cls
+                self.results.append((self.invalid_cls, self.stack + [key]))
             else:
-                trace("[input] matched {}", d)
-                self.results.append((d, self.stack + [key]))
-            self.stack = []
-            self.k = self.ck
+                assert self.character_cls
+                # small optimization:
+                self.k[key] = self.character_cls
+                self.results.append((self.character_cls, [key]))
+        else:
+            trace("[input] matched {}", d)
+            self.results.append((d, self.stack + [key]))
+        self.stack = []
+        self.k = self.ck
 
     def get(self):
-        if self.results:
-            return self.results.popleft()
-        else:
+        if not self.results:
             return None
 
-    def empty(self):
+        return self.results.popleft()
+
+    def empty(self) -> bool:
         return not self.results

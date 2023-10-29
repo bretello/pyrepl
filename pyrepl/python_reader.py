@@ -31,7 +31,8 @@ import sys
 import traceback
 import warnings
 
-from pyrepl import commands, completer, completing_reader, module_lister, reader
+from pyrepl import (commands, completer, completing_reader, module_lister,
+                    reader)
 from pyrepl.completing_reader import CompletingReader
 from pyrepl.historical_reader import HistoricalReader
 
@@ -59,7 +60,7 @@ def _reraise(cls, val, tb):
 class maybe_accept(commands.Command):
     def do(self):
         r = self.reader
-        text = r.get_unicode()
+        text = r.get_str()
         try:
             # ooh, look at the hack:
             code = r.compiler(text)
@@ -111,9 +112,7 @@ class PythonicReader(CompletingReader, HistoricalReader):
         try:
             with open(os.path.expanduser("~/.pythoni.hist"), "rb") as fh:
                 lines = fh.readlines()
-            self.history = [
-                line.rstrip(b"\n").decode("unicode_escape") for line in lines
-            ]
+            self.history = [line.rstrip(b"\n").decode() for line in lines]
         except FileNotFoundError:
             self.history = []
         self.historyi = len(self.history)
@@ -124,7 +123,7 @@ class PythonicReader(CompletingReader, HistoricalReader):
             self.commands[c.__name__.replace("_", "-")] = c
 
     def get_completions(self, stem):
-        b = self.get_unicode()
+        b = self.get_str()
         m = import_line_prog.match(b)
         if m:
             if not self._module_list_ready:
@@ -201,7 +200,7 @@ class ReaderConsole(code.InteractiveInterpreter):
                         # can't have warnings spewed onto terminal
                         sv = warnings.showwarning
                         warnings.showwarning = eat_it
-                        l = str(self.reader.readline(), "utf-8")
+                        l = self.reader.readline()
                     finally:
                         warnings.showwarning = sv
                 except KeyboardInterrupt:
@@ -224,9 +223,9 @@ class ReaderConsole(code.InteractiveInterpreter):
         self.reader.restore()
         warnings.showwarning = self.sv_sw
 
-    def handle1(self, block=1):
+    def handle1(self, block: bool = True):
         try:
-            r = 1
+            r = 1  # FIXME: what's the point of this?
             r = self.reader.handle1(block)
         except KeyboardInterrupt:
             self.restore()
@@ -234,7 +233,7 @@ class ReaderConsole(code.InteractiveInterpreter):
             self.prepare()
         else:
             if self.reader.finished:
-                text = self.reader.get_unicode()
+                text = self.reader.get_str()
                 self.restore()
                 if text:
                     self.execute(text)
@@ -243,7 +242,7 @@ class ReaderConsole(code.InteractiveInterpreter):
 
     def tkfilehandler(self, file, mask):
         try:
-            self.handle1(block=0)
+            self.handle1(block=False)
         except:
             self.exc_info = sys.exc_info()
 
@@ -257,13 +256,13 @@ class ReaderConsole(code.InteractiveInterpreter):
         )
 
         self.exc_info = None
-        while 1:
+        while True:
             # dooneevent will return 0 without blocking if there are
             # no Tk windows, 1 after blocking until an event otherwise
             # so the following does what we want (this wasn't expected
             # to be obvious).
             if not _tkinter.dooneevent(_tkinter.ALL_EVENTS):
-                self.handle1(block=1)
+                self.handle1(block=True)
             if self.exc_info:
                 type, value, tb = self.exc_info
                 self.exc_info = None
@@ -350,13 +349,13 @@ class ReaderConsole(code.InteractiveInterpreter):
         # note that unlike the other *interact methods, this returns immediately
         from cocoasupport import CocoaInteracter
 
-        self.cocoainteracter = CocoaInteracter.alloc().init(
+        self.cocoainteracter = CocoaInteracter.alloc(0).init(
             self, inputfilehandle, outputfilehandle
         )
 
 
 def main(
-    use_pygame_console=0,
+    use_pygame_console: bool = False,
     interactmethod=default_interactmethod,
     print_banner=True,
     clear_main=True,
@@ -364,7 +363,8 @@ def main(
     si, se, so = sys.stdin, sys.stderr, sys.stdout
     try:
         if False:  # pygame currently borked
-            from pyrepl.pygame_console import FakeStdin, FakeStdout, PyGameConsole
+            from pyrepl.pygame_console import (FakeStdin, FakeStdout,
+                                               PyGameConsole)
 
             con = PyGameConsole()
             sys.stderr = sys.stdout = FakeStdout(con)

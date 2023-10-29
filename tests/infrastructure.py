@@ -18,6 +18,8 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
+from typing import Tuple
+
 from pyrepl.console import Console, Event
 from pyrepl.reader import Reader
 
@@ -31,22 +33,19 @@ EA = EqualsAnything()
 
 
 class TestConsole(Console):
-    height = 24
-    width = 80
-    encoding = "utf-8"
-
     def __init__(self, events, verbose=False):
+        super().__init__(width=80, height=24, encoding="utf-8")
         self.events = events
         self.next_screen = None
         self.verbose = verbose
 
-    def refresh(self, screen, xy):
+    def refresh(self, screen, xy: Tuple[int, int]):
         if self.next_screen is not None:
-            assert screen == self.next_screen, (
-                f"[ {screen} != {self.next_screen}" "after {self.last_event_name} ]"
-            )
+            assert (
+                screen == self.next_screen
+            ), f"[ {screen} != {self.next_screen} after {self.last_event_name} ]"
 
-    def get_event(self, block=1):
+    def get_event(self, block=True):
         ev, sc = self.events.pop(0)
         self.next_screen = sc
         if not isinstance(ev, tuple):

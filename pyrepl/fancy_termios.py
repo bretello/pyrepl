@@ -18,21 +18,29 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import termios
+from typing import List, Union
 
 
 class TermState:
-    def __init__(self, tuples):
-        (
-            self.iflag,
-            self.oflag,
-            self.cflag,
-            self.lflag,
-            self.ispeed,
-            self.ospeed,
-            self.cc,
-        ) = tuples
+    def __init__(
+        self,
+        iflag: int,
+        oflag: int,
+        cflag: int,
+        lflag: int,
+        ispeed: int,
+        ospeed: int,
+        cc: List[bytes],
+    ):
+        self.iflag = iflag
+        self.oflag = oflag
+        self.cflag = cflag
+        self.lflag = lflag
+        self.ispeed = ispeed
+        self.ospeed = ospeed
+        self.cc = cc
 
-    def as_list(self):
+    def as_list(self) -> List[Union[int, List[bytes]]]:
         return [
             self.iflag,
             self.oflag,
@@ -43,12 +51,12 @@ class TermState:
             self.cc,
         ]
 
-    def copy(self):
-        return self.__class__(self.as_list())
+    def copy(self) -> "TermState":
+        return self.__class__(*(self.as_list()))  # type: ignore
 
 
-def tcgetattr(fd):
-    return TermState(termios.tcgetattr(fd))
+def tcgetattr(fd) -> TermState:
+    return TermState(*termios.tcgetattr(fd))
 
 
 def tcsetattr(fd, when, attrs):
@@ -56,12 +64,10 @@ def tcsetattr(fd, when, attrs):
 
 
 class Term(TermState):
-    TS__init__ = TermState.__init__
-
-    def __init__(self, fd=0):
-        self.TS__init__(termios.tcgetattr(fd))
+    def __init__(self, fd: int = 0):
+        super().__init__(*termios.tcgetattr(fd))
         self.fd = fd
-        self.stack = []
+        self.stack: List[List[Union[int, List[bytes]]]] = []
 
     def save(self):
         self.stack.append(self.as_list())

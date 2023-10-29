@@ -57,10 +57,9 @@ def _make_module_list():
 
 
 def find_modules(stem):
-    l = stem.split(".")
-    pack = ".".join(l[:-1])
+    pack = ".".join(stem.split(".")[:-1])
     try:
         mods = _packages[pack]
-    except KeyError:
-        raise ImportError('can\'t find "%s" package' % pack)
+    except KeyError as exc:
+        raise ImportError(f'can\'t find "{pack}" package') from exc
     return [mod for mod in mods if mod.startswith(stem)]
