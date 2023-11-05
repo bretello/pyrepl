@@ -1,0 +1,83 @@
+## Changelog
+
+Summary of 0.9.0:
+
+- drop support for python <3.8
+- misc cleanups
+
+Summary of 0.8.4:
+
+- python3 support
+- support for more readline hooks
+- backport various fixes from pypy
+- gracefully break on sys.stdout.close()
+
+Summary of 0.8.3:
+
+- First release from new home on bitbucket.
+- Various fixes to pyrepl.readline.
+- Allow pyrepl to run if unicodedata is unimportable.
+
+Summary of 0.8.2:
+
+- This is the same version which is distributed with PyPy 1.4, which uses it
+  as its default interactive interpreter:
+
+  - have the possibility of having a "CPython-like" prompt, with ">>>" as
+    PS1 and "..." as PS2
+
+  - add the pyrepl.readline module, which exposes a subset of CPython's
+    readline implemented on top of pyrepl
+
+- Add support for colored completions: see e.g. fancycomplete:
+  https://github.com/pdbpp/fancycompleter
+
+Summary of 0.8.1:
+
+- Fixes
+  - in the area of unbound keys and unknown commands
+  - in quoted-insert
+  - in unicode support
+- make Reader and subclasses new-style classes
+  - make the inheritance hierachy look like this
+    Reader
+    / \
+     HistoricalReader CompletingReader
+    \ /
+    PythonicReader
+    Turns out I've been wanting new-style classes since before they existed!
+  - needed to slightly change the way keymaps are built
+
+Summary of 0.8.0:
+
+- A whole bundle of things.
+  - unicode support (although working out what encoding the terminal
+    is using can be "tricky")
+  - internal rearchitecting
+  - probably a bunch of new bugs...
+- Development and web-presence moved to codespeak.net
+
+Summary of new stuff in 0.7.1:
+
+- A non-broken setup.py...
+
+Summary of new stuff in 0.7.0:
+
+- Moved to a package architecture.
+- Wrote a (very simple!) distutils setup.py script.
+- Changed the keyspec format to be more sensible. See the docstring
+  in pyrepl/keymap.py for more information.
+- Portability fixes.
+- Various tortuous changes to use 2.2 features where possible but
+  retaining 2.1 support (I hope; haven't got a 2.1 here to test with).
+- Jumping up and down on control-C now shouldn't dump you out of
+  pyrepl (via a large hammer kind of approach).
+- Bug fixes, particularly in the history handling stuff.
+- reader.Reader has a new method, bind(), intended to be used by the
+  user.
+- Changes to the init file handling.
+- Sundry code reorganization. Libraries built on top of pyrepl will
+  probably require small modifications (but I'm not sure anyone has
+  written any of these yet!).
+- A prototypical pygame console.
+  -- see CHANGES for more details and older news
