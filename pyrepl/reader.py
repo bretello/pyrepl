@@ -302,7 +302,7 @@ feeling more loquacious than I am now."""
                 screeninfo.append((0, []))
         return screen
 
-    def process_prompt(self, prompt: str) -> tuple[str, int]:
+    def process_prompt(self, prompt: str) -> Tuple[str, int]:
         """Process the prompt.
 
         This means calculate the length of the prompt. The character \x01
@@ -422,7 +422,7 @@ feeling more loquacious than I am now."""
     def pop_input_trans(self):
         self.input_translator = self.input_trans_stack.pop()
 
-    def pos2xy(self, pos: int) -> tuple[int, int]:
+    def pos2xy(self, pos: int) -> Tuple[int, int]:
         """Return the x, y coordinates of position 'pos'."""
         # this *is* incomprehensible, yes.
         y = 0

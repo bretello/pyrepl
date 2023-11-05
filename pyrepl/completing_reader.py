@@ -19,7 +19,7 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from pyrepl import commands, reader
 from pyrepl.reader import Reader
@@ -270,5 +270,5 @@ class CompletingReader(Reader):
             p -= 1
         return "".join(b[p + 1 : self.pos])
 
-    def get_completions(self, stem: str) -> list[str]:
+    def get_completions(self, stem: str) -> List[str]:
         return []
