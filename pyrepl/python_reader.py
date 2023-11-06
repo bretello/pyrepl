@@ -193,7 +193,7 @@ class ReaderConsole(code.InteractiveInterpreter):
                 sys.stdout.flush()
 
     def interact(self):
-        while 1:
+        while True:
             try:  # catches EOFError's and KeyboardInterrupts during execution
                 try:  # catches KeyboardInterrupts during editing
                     try:  # warning saver

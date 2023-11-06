@@ -169,7 +169,7 @@ class complete(commands.Command):
         elif len(completions) == 1:
             if completions_unchangable and len(completions[0]) == len(stem):
                 r.msg = "[ sole completion ]"
-                r.dirty = 1
+                r.dirty = True
             r.insert(completions[0][len(stem) :])
         else:
             p = prefix(completions, len(stem))
@@ -185,13 +185,13 @@ class complete(commands.Command):
                     r.use_brackets,
                     r.sort_in_column,
                 )
-                r.dirty = 1
+                r.dirty = True
             elif stem + p in completions:
                 r.msg = "[ complete but not unique ]"
-                r.dirty = 1
+                r.dirty = True
             else:
                 r.msg = "[ not unique ]"
-                r.dirty = 1
+                r.dirty = True
 
 
 class self_insert(commands.self_insert):
