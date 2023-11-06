@@ -213,7 +213,7 @@ class _ReadlineWrapper:
 
         return str(ret, ENCODING)
 
-    def multiline_input(self, more_lines, ps1, ps2, returns_unicode=False):
+    def multiline_input(self, more_lines, ps1: str, ps2: str):
         """Read an input on possibly multiple lines, asking for more
         lines as long as 'more_lines(unicodetext)' returns an object whose
         boolean value is true.
@@ -224,7 +224,7 @@ class _ReadlineWrapper:
             reader.more_lines = more_lines
             reader.ps1 = reader.ps2 = ps1
             reader.ps3 = reader.ps4 = ps2
-            return reader.readline(returns_unicode=returns_unicode)
+            return reader.readline()
         finally:
             reader.more_lines = saved
 
