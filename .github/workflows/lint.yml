@@ -30,8 +30,8 @@ jobs:
       - name: Cache .tox
         uses: actions/cache@v3
         with:
-          path: ${{ github.workspace }}/.tox/${{ env.tox_env }}
-          key: "tox|${{ matrix.os }}|${{ env.tox_env }}|${{ env.PY_CACHE_KEY }}|${{ hashFiles('tox.ini', 'setup.*') }}"
+          path: ${{ github.workspace }}/.tox/${{ matrix.tox_env }}
+          key: "tox|${{ matrix.os }}|${{ matrix.tox_env }}|${{ env.PY_CACHE_KEY }}|${{ hashFiles('tox.ini', 'setup.*') }}"
 
       - name: Install/update tools
         run: |
@@ -39,9 +39,9 @@ jobs:
 
       - name: Setup tox environment
         id: setup-tox
-        run: tox --notest -v -e ${{ env.tox_env }}
+        run: tox --notest -v -e ${{ matrix.tox_env }}
 
       - name: Test
         env:
           FORCE_COLOR: "1"
-        run: tox -v -e ${{ env.tox_env }}
+        run: tox -v -e ${{ matrix.tox_env }}
