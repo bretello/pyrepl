@@ -3,6 +3,7 @@
 This is `pyrepl`, a readline-a-like in pure Python.
 
 [![CI](https://github.com/bretello/pyrepl/actions/workflows/ci.yml/badge.svg)](https://github.com/bretello/pyrepl/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/bretello/pyrepl/graph/badge.svg?token=93KG729XHR)](https://codecov.io/gh/bretello/pyrepl)
 
 It requires python 3.8 (or newer) and features:
 
