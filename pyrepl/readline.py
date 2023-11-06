@@ -197,11 +197,15 @@ class _ReadlineWrapper:
             self.reader.config = self.config
         return self.reader
 
-    def input(self, prompt="") -> str:
+    def input(self, prompt: str = "") -> str:
         try:
             reader = self.get_reader()
         except _error:
-            return _old_input(prompt) if _old_input is not None else input(prompt)
+            if _old_input is not None:
+                return _old_input(prompt)
+
+            return input(prompt)
+
         reader.ps1 = prompt
 
         if self.stdout and hasattr(self.stdout, "flush"):

@@ -46,16 +46,15 @@ def run_multiline_interactive_console(mainmodule=None, future_flags=0):
     if future_flags:
         console.compile.compiler.flags |= future_flags
 
-    def more_lines(unicodetext):
-        src = unicodetext
+    def more_lines(src: str) -> bool:
         try:
             code = console.compile(src, "<stdin>", "single")
         except (OverflowError, SyntaxError, ValueError):
             return False
-        else:
-            return code is None
 
-    while 1:
+        return code is None
+
+    while True:
         try:
             ps1 = getattr(sys, "ps1", ">>> ")
             ps2 = getattr(sys, "ps2", "... ")
