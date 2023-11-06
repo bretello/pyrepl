@@ -73,7 +73,7 @@ class KillCommand(Command):
         else:
             r.kill_ring.append(text)
         r.pos = start
-        r.dirty = False
+        r.dirty = True
 
 
 class YankCommand(Command):
