@@ -170,7 +170,7 @@ class UnixConsole(Console):
 
         # work out how we're going to sling the cursor around
         # hpa don't work in windows telnet :-(
-        if False and self._hpa:
+        if False and self._hpa:  # noqa: SIM223
             self.__move_x = self.__move_x_hpa
         elif self._cub and self._cuf:  # type: ignore[attr-defined]
             self.__move_x = self.__move_x_cub_cuf  # type: ignore[has-type]

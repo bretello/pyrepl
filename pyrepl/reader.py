@@ -432,7 +432,7 @@ feeling more loquacious than I am now."""
             p, l2 = self.screeninfo[y]
             return (p + len(l2) - 1, y)
         else:
-            for p, l2 in self.screeninfo:
+            for p, l2 in self.screeninfo:  # noqa: B007 # p is used as the return value
                 l = l2.count(1)
                 if l > pos:
                     break

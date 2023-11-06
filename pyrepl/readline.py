@@ -38,7 +38,11 @@ from pyrepl.unix_console import UnixConsole, _error
 
 ENCODING = sys.getfilesystemencoding() or "latin1"  # XXX review
 
-__all__ = [
+
+# Note: stubs are dynamically generated for
+# read_init_file, redisplay and set_pre_input_hook
+# so we F822 is a false positive
+__all__ = [  # noqa: F822
     "add_history",
     "clear_history",
     "get_begidx",
@@ -100,7 +104,7 @@ class ReadlineAlikeReader(HistoricalReader, CompletingReader):
             while True:
                 try:
                     next = function(stem, state)
-                except:
+                except:  # noqa: E722
                     break
                 if not isinstance(next, str):
                     break

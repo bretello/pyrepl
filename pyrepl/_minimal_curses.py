@@ -46,6 +46,7 @@ ERR = -1
 try:
     from __pypy__ import builtinify
 except ImportError:
+
     def builtinify(f):
         return f
 

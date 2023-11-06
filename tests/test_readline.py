@@ -2,6 +2,7 @@ import os
 import pty
 
 import pytest
+
 from pyrepl.readline import _ReadlineWrapper
 
 

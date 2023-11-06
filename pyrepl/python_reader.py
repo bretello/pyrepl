@@ -31,8 +31,7 @@ import sys
 import traceback
 import warnings
 
-from pyrepl import (commands, completer, completing_reader, module_lister,
-                    reader)
+from pyrepl import commands, completer, completing_reader, module_lister, reader
 from pyrepl.completing_reader import CompletingReader
 from pyrepl.historical_reader import HistoricalReader
 
@@ -177,7 +176,7 @@ class ReaderConsole(code.InteractiveInterpreter):
         try:
             with open(initfile) as f:
                 exec(compile(f.read(), initfile, "exec"), self.locals, self.locals)
-        except:
+        except:  # noqa: E722
             etype, value, tb = sys.exc_info()
             traceback.print_exception(etype, value, tb.tb_next)
 
@@ -243,7 +242,7 @@ class ReaderConsole(code.InteractiveInterpreter):
     def tkfilehandler(self, file, mask):
         try:
             self.handle1(block=False)
-        except:
+        except:  # noqa: E722
             self.exc_info = sys.exc_info()
 
     # how the <expletive> do you get this to work on Windows (without

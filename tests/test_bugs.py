@@ -18,6 +18,7 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 import pytest
+
 from pyrepl.historical_reader import HistoricalReader
 
 from .infrastructure import EA, TestReader, read_spec
