@@ -29,6 +29,7 @@ extensions for multiline input.
 import contextlib
 import os
 import sys
+from typing import Callable, Union
 
 from pyrepl import commands
 from pyrepl.completing_reader import CompletingReader
@@ -217,18 +218,22 @@ class _ReadlineWrapper:
 
         return str(ret, ENCODING)
 
-    def multiline_input(self, more_lines, ps1: str, ps2: str):
+    def multiline_input(
+        self,
+        more_lines: Callable[[str], bool],
+        ps1: str,
+        ps2: str,
+        get_bytes: bool = True,
+    ) -> Union[bytes, str]:
         """Read an input on possibly multiple lines, asking for more
-        lines as long as 'more_lines(unicodetext)' returns an object whose
-        boolean value is true.
-        """
+        lines as long as 'more_lines(str)' is truish."""
         reader = self.get_reader()
         saved = reader.more_lines
         try:
             reader.more_lines = more_lines
             reader.ps1 = reader.ps2 = ps1
             reader.ps3 = reader.ps4 = ps2
-            return reader.readline()
+            return reader.readline(get_bytes=get_bytes)
         finally:
             reader.more_lines = saved
 
