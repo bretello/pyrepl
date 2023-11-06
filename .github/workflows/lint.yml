@@ -1,0 +1,47 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - "master"
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        python: ["3.8", "3.9", "3.10", "3.11"]
+        tox_env: ["qa"]
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python ${{ matrix.python }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: set PY_CACHE_KEY
+        run: echo "PY_CACHE_KEY=$(python -c 'import hashlib, sys;print(hashlib.sha256(sys.version.encode()+sys.executable.encode()).hexdigest())')" >> $GITHUB_ENV
+      - name: Cache .tox
+        uses: actions/cache@v3
+        with:
+          path: ${{ github.workspace }}/.tox/${{ env.tox_env }}
+          key: "tox|${{ matrix.os }}|${{ env.tox_env }}|${{ env.PY_CACHE_KEY }}|${{ hashFiles('tox.ini', 'setup.*') }}"
+
+      - name: Install/update tools
+        run: |
+          pip install -U pip setuptools virtualenv tox
+
+      - name: Setup tox environment
+        id: setup-tox
+        run: tox --notest -v -e ${{ env.tox_env }}
+
+      - name: Test
+        env:
+          FORCE_COLOR: "1"
+        run: tox -v -e ${{ env.tox_env }}
