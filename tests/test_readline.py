@@ -31,6 +31,33 @@ def test_input():
     assert isinstance(result, str)
 
 
+@pytest.mark.parametrize(
+    "get_bytes,expected",
+    [
+        (True, b"line1\nline2\nline3"),
+        (False, "line1\nline2\nline3"),
+    ],
+)
+def test_multiline_input(get_bytes, expected):
+    master, slave = pty.openpty()
+    readline_wrapper = _ReadlineWrapper(slave, slave)
+
+    os.write(master, b"line1\nline2\nline3\n")
+
+    def more_lines(text: str) -> bool:
+        # stop when we read all text
+        return text != "line1\nline2\nline3"
+
+    result = readline_wrapper.multiline_input(
+        more_lines=more_lines,
+        ps1=">",
+        ps2="... ",
+        get_bytes=get_bytes,
+    )
+
+    assert result == expected
+
+
 def test_read_history_file(readline_wrapper, tmp_path):
     histfile = tmp_path / "history"
     histfile.touch()

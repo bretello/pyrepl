@@ -59,7 +59,12 @@ def run_multiline_interactive_console(mainmodule=None, future_flags=0):
             ps1 = getattr(sys, "ps1", ">>> ")
             ps2 = getattr(sys, "ps2", "... ")
             try:
-                statement = multiline_input(more_lines, ps1, ps2, returns_unicode=True)
+                statement = multiline_input(
+                    more_lines,
+                    ps1,
+                    ps2,
+                    get_bytes=False,
+                )
             except EOFError:
                 break
             more = console.push(statement)

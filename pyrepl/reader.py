@@ -586,7 +586,8 @@ feeling more loquacious than I am now."""
     def readline(
         self,
         startup_hook: Optional[Callable[[], None]] = None,
-    ) -> bytes:
+        get_bytes: bool = True,
+    ) -> Union[str, bytes]:
         """Read a line.  The implementation of this method also shows
         how to drive Reader if you want more control over the event
         loop."""
@@ -597,6 +598,9 @@ feeling more loquacious than I am now."""
             self.refresh()
             while not self.finished:
                 self.handle1()
+            if not get_bytes:
+                return self.get_str()
+
             return self.get_buffer()
         finally:
             self.restore()
