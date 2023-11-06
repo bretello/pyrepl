@@ -19,21 +19,9 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-import locale
-import pdb
 import sys
-
-# I forget exactly why this is necessary:
-try:
-    locale.setlocale(locale.LC_ALL, "")
-except locale.Error:
-    pass  # oh well
-
 
 from pyrepl import cmdrepl
 from pyrepl.python_reader import main
-
-# whizzy feature:  graft pyrepl support onto pdb
-# pdb.Pdb = cmdrepl.replize(pdb.Pdb, 1)
 
 main()

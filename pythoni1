@@ -12,8 +12,12 @@ from pyrepl.simple_interact import run_multiline_interactive_console
 
 sys.modules["readline"] = readline
 
-if os.getenv("PYTHONSTARTUP"):
-    exec(open(os.getenv("PYTHONSTARTUP")).read())
+
+pythonstartup = os.getenv("PYTHONSTARTUP")
+if pythonstartup and os.path.exists(pythonstartup):
+    with open(pythonstartup) as fh:
+        code = fh.read()
+    exec(code)
 
 print("Python", sys.version)
 run_multiline_interactive_console()
