@@ -36,4 +36,4 @@ from pyrepl.python_reader import main
 # whizzy feature:  graft pyrepl support onto pdb
 # pdb.Pdb = cmdrepl.replize(pdb.Pdb, 1)
 
-main(use_pygame_console=("pg" in sys.argv))
+main()

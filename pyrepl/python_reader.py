@@ -362,55 +362,17 @@ def main(
 ):
     si, se, so = sys.stdin, sys.stderr, sys.stdout
     try:
-        if False:  # pygame currently borked
-            from pyrepl.pygame_console import (FakeStdin, FakeStdout,
-                                               PyGameConsole)
+        from pyrepl.unix_console import UnixConsole
 
-            con = PyGameConsole()
-            sys.stderr = sys.stdout = FakeStdout(con)
-            sys.stdin = FakeStdin(con)
-        else:
-            from pyrepl.unix_console import UnixConsole
-
-            try:
-                import locale
-            except ImportError:
-                encoding = None
-            else:
-                if hasattr(locale, "nl_langinfo") and hasattr(locale, "CODESET"):
-                    encoding = locale.nl_langinfo(locale.CODESET)
-                elif os.environ.get("TERM_PROGRAM") == "Apple_Terminal":
-                    # /me whistles innocently...
-                    code = int(
-                        os.popen(
-                            "defaults read com.apple.Terminal StringEncoding"
-                        ).read()
-                    )
-                    if code == 4:
-                        encoding = "utf-8"
-                        # More could go here -- and what's here isn't
-                        # bulletproof.  What would be?  AppleScript?
-                        # Doesn't seem to be possible.
-                    else:
-                        encoding = None
-                else:
-                    encoding = None  # so you get ASCII...
-            con = UnixConsole(os.dup(0), os.dup(1), None, encoding)
+        con = UnixConsole(os.dup(0), os.dup(1))
         if print_banner:
             print("Python", sys.version, "on", sys.platform)
             print(
                 'Type "help", "copyright", "credits" or "license" '
                 "for more information."
             )
-        sys.path.insert(0, os.getcwd())
 
-        if clear_main and __name__ != "__main__":
-            mainmod = imp.new_module("__main__")
-            sys.modules["__main__"] = mainmod
-        else:
-            mainmod = sys.modules["__main__"]
-
-        rc = ReaderConsole(con, mainmod.__dict__)
+        rc = ReaderConsole(con)
         rc.reader._module_list_ready = False
         rc.run_user_init_file()
         getattr(rc, interactmethod)()
