@@ -73,8 +73,6 @@ def general_keycodes() -> Dict[bytes, str]:
     keycodes: Dict[bytes, str] = {}
     for key, tiname in _keynames.items():
         keycode = curses.tigetstr(tiname)
-        assert isinstance(keycode, bytes)
-        assert isinstance(key, str)
 
         trace("key {key} tiname {tiname} keycode {keycode!r}", **locals())
         if keycode:
