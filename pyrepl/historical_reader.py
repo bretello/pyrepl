@@ -260,7 +260,7 @@ class HistoricalReader(R):
     def select_item(self, i: int):
         self.transient_history[self.historyi] = self.get_str()
         buf = self.transient_history.get(i)
-        self.buffer = list(buf or self.history[i])
+        self.buffer = list(buf if buf is not None else self.history[i])
         self.historyi = i
         self.pos = len(self.buffer)
         self.dirty = True
