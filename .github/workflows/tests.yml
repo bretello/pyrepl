@@ -65,7 +65,7 @@ jobs:
 
       - name: Report coverage
         if: always() && (steps.setup-tox.outcome == 'success' && contains(env.tox_env, '-coverage'))
-        uses: codecov/codecov-action@v3
+        uses: codecov/codecov-action@v4
         with:
           files: ./coverage.xml
           flags: ${{ runner.os }}
