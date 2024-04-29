@@ -74,9 +74,9 @@ class maybe_accept(commands.Command):
 
 
 from_line_prog = re.compile(
-    "^from\s+(?P<mod>[A-Za-z_.0-9]*)\s+import\s+(?P<name>[A-Za-z_.0-9]*)"
+    r"^from\s+(?P<mod>[A-Za-z_.0-9]*)\s+import\s+(?P<name>[A-Za-z_.0-9]*)"
 )
-import_line_prog = re.compile("^(?:import|from)\s+(?P<mod>[A-Za-z_.0-9]*)\s*$")
+import_line_prog = re.compile(r"^(?:import|from)\s+(?P<mod>[A-Za-z_.0-9]*)\s*$")
 
 
 def saver(reader=reader):
