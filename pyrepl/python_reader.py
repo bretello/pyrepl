@@ -24,20 +24,21 @@
 
 import atexit
 import code
-import imp
+import contextlib
 import os
 import re
 import sys
 import traceback
 import warnings
+from importlib import import_module
 
 from pyrepl import commands, completer, completing_reader, module_lister, reader
 from pyrepl.completing_reader import CompletingReader
 from pyrepl.historical_reader import HistoricalReader
 
 try:
-    imp.find_module("twisted")
-except ImportError:
+    import twisted
+except ModuleNotFoundError:
     default_interactmethod = "interact"
 else:
     default_interactmethod = "twistedinteract"
@@ -140,11 +141,9 @@ class PythonicReader(CompletingReader, HistoricalReader):
             try:
                 l = module_lister._packages[mod]
             except KeyError:
-                try:
-                    mod = __import__(mod, self.locals, self.locals, [""])
+                with contextlib.suppress(ImportError):
+                    mod = import_module(mod)
                     return [x for x in dir(mod) if x.startswith(name)]
-                except ImportError:
-                    pass
             else:
                 return [x[len(mod) + 1 :] for x in l if x.startswith(mod + "." + name)]
         try:
