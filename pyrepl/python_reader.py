@@ -145,10 +145,9 @@ class PythonicReader(CompletingReader, HistoricalReader):
                     mod = import_module(mod)
                     return [x for x in dir(mod) if x.startswith(name)]
             else:
-                return [x[len(mod) + 1 :] for x in l if x.startswith(mod + "." + name)]
+                return [x[len(mod) + 1 :] for x in l if x.startswith(f"{mod}.{name}")]
         try:
-            l = sorted(set(self.completer.complete(stem)))
-            return l
+            return sorted(set(self.completer.complete(stem)))
         except (NameError, AttributeError):
             return []
 
