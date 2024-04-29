@@ -1,5 +1,6 @@
 import pytest
 
+
 @pytest.fixture(scope="session", autouse=True)
 def isolate(tmp_path_factory):
     """ avoids writing history files and/or using user-specific settings """

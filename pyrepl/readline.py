@@ -395,7 +395,7 @@ def _make_stub(_name, _ret):
     def stub(*args, **kwds):
         import warnings
 
-        warnings.warn("readline.%s() not implemented" % _name, stacklevel=2)
+        warnings.warn(f"readline.{_name}() not implemented", stacklevel=2)
 
     stub.__name__ = _name
     globals()[_name] = stub
