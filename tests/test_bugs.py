@@ -70,3 +70,61 @@ def test_signal_failure(monkeypatch):
     finally:
         os.close(mfd)
         os.close(sfd)
+
+
+def test_down_historicalreader():
+    class HistoricalReaderWithHistory(HistoricalTestReader):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.history = ['print("hello")']
+            self.historyi = 1
+
+    read_spec(
+        [
+            ("up", ['print("hello")']),
+            ("up", ['print("hello")', "! start of buffer "]),
+            ("down", [""]),
+            ("down", ["", "! end of buffer "]),
+            ("accept", [""]),
+        ],
+        reader_class=HistoricalReaderWithHistory,
+    )
+
+
+def test_down_pythonicreader():
+    from pyrepl.python_reader import PythonicReader
+
+    class PythonicTestReader(PythonicReader, TestReader):
+        def __init__(self, console):
+            super().__init__(console, locals=[])
+
+        pass
+
+    read_spec(
+        [
+            ("up", ["", "! start of buffer "]),
+            ("down", ["", "! end of buffer "]),
+            ("accept", [""]),
+        ],
+        reader_class=PythonicTestReader,
+    )
+
+
+def test_down_pythonicreader_history():
+    from pyrepl.python_reader import PythonicReader
+
+    class PythonicTestReader(PythonicReader, TestReader):
+        def __init__(self, console):
+            super().__init__(console, locals=[])
+            self.history = ['print("hello")']
+
+    read_spec(
+        [
+            ("up", ['print("hello")']),
+            ("up", ['print("hello")', "! start of buffer "]),
+            ("down", [""]),
+            ("down", ["", "! end of buffer "]),
+            ("accept", [""]),
+        ],
+        reader_class=PythonicTestReader,
+    )
