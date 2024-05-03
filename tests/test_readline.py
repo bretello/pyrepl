@@ -1,5 +1,6 @@
 import os
 import pty
+import sys
 
 import pytest
 
@@ -12,6 +13,10 @@ def readline_wrapper():
     return _ReadlineWrapper(slave, slave)
 
 
+@pytest.mark.skipif(
+    sys.platform == "darwin" and sys.version_info < (3, 10, 9),
+    reason="readline() hangs due to termios.tcdrain hanging on MacOS https://github.com/python/cpython/issues/97001",
+)
 def test_readline():
     master, slave = pty.openpty()
     readline_wrapper = _ReadlineWrapper(slave, slave)
@@ -22,6 +27,10 @@ def test_readline():
     assert isinstance(result, bytes)
 
 
+@pytest.mark.skipif(
+    sys.platform == "darwin" and sys.version_info < (3, 10, 9),
+    reason="readline() hangs due to termios.tcdrain hanging on MacOS https://github.com/python/cpython/issues/97001",
+)
 def test_input():
     master, slave = pty.openpty()
     readline_wrapper = _ReadlineWrapper(slave, slave)
@@ -32,6 +41,10 @@ def test_input():
     assert isinstance(result, str)
 
 
+@pytest.mark.skipif(
+    sys.platform == "darwin" and sys.version_info < (3, 10, 9),
+    reason="readline() hangs due to termios.tcdrain hanging on MacOS https://github.com/python/cpython/issues/97001",
+)
 @pytest.mark.parametrize(
     "get_bytes,expected",
     [

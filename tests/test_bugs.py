@@ -17,6 +17,8 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+import sys
+
 import pytest
 
 from pyrepl.historical_reader import HistoricalReader
@@ -45,6 +47,10 @@ def test_cmd_instantiation_crash():
     read_spec(spec, HistoricalTestReader)
 
 
+@pytest.mark.skipif(
+    sys.platform == "darwin" and sys.version_info < (3, 10, 9),
+    reason="prepare() hangs due to termios.tcdrain hanging on MacOS https://github.com/python/cpython/issues/97001",
+)
 def test_signal_failure(monkeypatch):
     import os
     import pty
