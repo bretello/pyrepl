@@ -71,4 +71,5 @@ jobs:
           files: ./coverage.xml
           flags: ${{ runner.os }}
           name: ${{ env.tox_env }}
+          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
