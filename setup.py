@@ -32,8 +32,7 @@ command line interfaces, featuring:
 
 setup(
     name="pyrepl",
-    setup_requires="setupmeta",
-    versioning="devcommit",
+    setup_requires="setuptools_scm",
     author="Michael Hudson-Doyle",
     author_email="micahel@gmail.com",
     maintainer="Daniel Hahler",
