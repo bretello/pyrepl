@@ -1,3 +1,0 @@
-include TODO CREDITS CHANGES pythoni encopyright.py LICENSE
-include MANIFEST.in
-recursive-include testing *.py
