@@ -58,7 +58,7 @@ def setupterm(termstr, fd):
     err = ctypes.c_int(0)
     result = clib.setupterm(termstr, fd, ctypes.byref(err))
     if result == ERR:
-        raise error("setupterm(%r, %d) failed (err=%d)" % (termstr, fd, err.value))
+        raise error(f"setupterm({termstr}, {fd}) failed (err={err.value})")
 
 
 @builtinify

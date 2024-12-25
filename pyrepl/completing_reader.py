@@ -100,7 +100,7 @@ def build_menu(cons, wordlist, start, use_brackets, sort_in_column):
             i = 0
             break
         if r + 5 > cons.height:
-            menu.append("   %d more... " % (len(wordlist) - i))
+            menu.append(f"   {len(wordlist)-1} more... ")
             break
     return menu, i
 
