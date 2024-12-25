@@ -316,7 +316,7 @@ class _ReadlineWrapper:
         if 0 <= index < len(history):
             del history[index]
         else:
-            raise ValueError("No history item at position %d" % index)
+            raise ValueError(f"No history item at position {index}")
             # blame readline.c for raising ValueError
 
     def replace_history_item(self, index, line):
@@ -324,7 +324,7 @@ class _ReadlineWrapper:
         if 0 <= index < len(history):
             history[index] = self._histline(line)
         else:
-            raise ValueError("No history item at position %d" % index)
+            raise ValueError(f"No history item at position {index}")
             # blame readline.c for raising ValueError
 
     def add_history(self, line):
