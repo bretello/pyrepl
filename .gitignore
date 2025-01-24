@@ -54,3 +54,5 @@ venv.bak/
 dmypy.json
 
 .ruff_cache/
+
+pyrepl/_version.py
