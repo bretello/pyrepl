@@ -1,4 +1,4 @@
-name: CI
+name: Tests
 
 on:
   push:
@@ -8,8 +8,6 @@ on:
   workflow_dispatch:
 
 env:
-  PIP_DISABLE_PIP_VERSION_CHECK: true
-  PYTEST_ADDOPTS: "-vv"
   # Set TERM to some commonly used default
   # (not provided/setup by GitHub Actions by default).
   TERM: xterm-256color
@@ -32,44 +30,30 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
 
-      - name: Set tox_env
-        run: |
-          pyv=$(echo ${{matrix.python}} | sed 's/\.//')
-          tox_env=py${pyv}-coverage
-          echo "tox env name: ${tox_env}"
-          echo "tox_env=${tox_env}">> $GITHUB_ENV
-
-      - name: set PY_CACHE_KEY
-        run: echo "PY_CACHE_KEY=$(python -c 'import hashlib, sys;print(hashlib.sha256(sys.version.encode()+sys.executable.encode()).hexdigest())')" >> $GITHUB_ENV
-      - name: Cache .tox
-        uses: actions/cache@v4
+      - uses: actions/checkout@v4
+      - name: Setup python and uv
+        uses: astral-sh/setup-uv@v5
         with:
-          path: ${{ github.workspace }}/.tox/${{ env.tox_env }}
-          key: "tox|${{ matrix.os }}|${{ env.tox_env }}|${{ env.PY_CACHE_KEY }}|${{ hashFiles('tox.ini', 'setup.*') }}"
-
-      - name: Install/update tools
+          version: "latest"
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+          cache-dependency-glob: |
+            setup.py
+      - name: Install nox
         run: |
-          pip install -U pip setuptools virtualenv tox
-
-      - name: Setup tox environment
-        id: setup-tox
-        run: tox --notest -v -e ${{ env.tox_env }}
-
-      - name: Test
+          uv pip install nox
+          nox --version
+      - name: Run tests
         env:
           COLUMNS: "90" # better alignment (working around https://github.com/blueyed/pytest/issues/491).
           PY_COLORS: "1"
-          # UTF-8 mode for Windows (https://docs.python.org/3/using/windows.html#utf-8-mode).
-          PYTHONUTF8: "1"
-          TOX_TESTENV_PASSENV: "PYTHONUTF8"
-        run: tox -v -e ${{ env.tox_env }}
+        run: |
+          nox -s "tests-${{ matrix.python }}" -- --cov-report=xml
 
-      - name: Report coverage
-        if: always() && (steps.setup-tox.outcome == 'success' && contains(env.tox_env, '-coverage'))
-        uses: codecov/codecov-action@v3
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v4
+        if: github.actor != 'dependabot[bot]'
         with:
-          files: ./coverage.xml
-          flags: ${{ runner.os }}
-          name: ${{ env.tox_env }}
-          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: true
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

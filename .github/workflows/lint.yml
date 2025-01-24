@@ -17,32 +17,23 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python: ["3.8", "3.9", "3.10", "3.11", "3.12", "3.13"]
-        tox_env: ["qa"]
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.python }}
-        uses: actions/setup-python@v5
+      - name: Setup python and uv
+        uses: astral-sh/setup-uv@v5
         with:
+          version: "latest"
           python-version: ${{ matrix.python }}
-
-      - name: set PY_CACHE_KEY
-        run: echo "PY_CACHE_KEY=$(python -c 'import hashlib, sys;print(hashlib.sha256(sys.version.encode()+sys.executable.encode()).hexdigest())')" >> $GITHUB_ENV
-      - name: Cache .tox
-        uses: actions/cache@v4
-        with:
-          path: ${{ github.workspace }}/.tox/${{ matrix.tox_env }}
-          key: "tox|${{ matrix.os }}|${{ matrix.tox_env }}|${{ env.PY_CACHE_KEY }}|${{ hashFiles('tox.ini', 'setup.*') }}"
-
-      - name: Install/update tools
+          enable-cache: true
+          cache-dependency-glob: |
+            setup.py
+      - name: Install nox
         run: |
-          pip install -U pip setuptools virtualenv tox
+          uv pip install nox
+          nox --version
 
-      - name: Setup tox environment
-        id: setup-tox
-        run: tox --notest -v -e ${{ matrix.tox_env }}
-
-      - name: Test
+      - name: Lint
         env:
           FORCE_COLOR: "1"
-        run: tox -v -e ${{ matrix.tox_env }}
+        run: nox -s lint
