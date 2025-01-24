@@ -1,8 +1,9 @@
 [tool.setuptools_scm]
-# write_to = "pyrepl/_version.py"
+write_to = "pyrepl/_version.py"
 
 [tool.ruff]
 target-version = "py38"
+exclude = ["fancycompleter/_version.py",]
 
 [tool.ruff.lint]
 select = [
