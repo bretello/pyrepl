@@ -33,16 +33,16 @@ def tests(session: nox.Session) -> None:
 
 @nox.session
 def lint(session: nox.Session) -> None:
-    session.install("ruff", "mypy")
-    session.install("-e", ".[tests]")
+    session.install("-e", ".[dev]")
 
-    session.run("ruff", "check", "setup.py", "fancycompleter", "tests")
+    session.run("ruff", "check", "setup.py", "pyrepl", "tests", "pythoni", "pythoni1")
+
     # session.run("python", "-m", "mypy")
 
 
 @nox.session
 def build(session: nox.Session) -> None:
-    session.install("build", "setuptools", "twine")
+    session.install("build", "twine")
     session.run("python", "-m", "build")
     dists = glob.glob("dist/*")
     session.run("twine", "check", *dists, silent=True)
@@ -55,8 +55,8 @@ def dev(session: nox.Session) -> None:
     venv_dir = os.fsdecode(os.path.abspath(args[0]))
 
     session.log(f"Setting up virtual environment in {venv_dir}")
-    session.install("virtualenv")
-    session.run("virtualenv", venv_dir, silent=True)
+    session.install("uv")
+    session.run("uv", "venv", venv_dir, silent=True)
 
     python = os.path.join(venv_dir, "bin/python")
-    session.run(python, "-m", "pip", "install", "-e", ".[tests]", external=True)
+    session.run(python, "-m", "uv", "install", "-e", ".[dev]", external=True)

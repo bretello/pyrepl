@@ -46,7 +46,10 @@ setup(
     extras_require={
         "tests": [
             "pytest",
+            "pytest-coverage",
+            "pytest-timeout",
             "pexpect",
         ],
+        "dev": ["ruff==0.9.2", "pyrepl[tests]"],
     },
 )
