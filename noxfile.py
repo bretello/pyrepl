@@ -43,7 +43,7 @@ def lint(session: nox.Session) -> None:
 @nox.session
 def build(session: nox.Session) -> None:
     session.install("build", "twine")
-    session.run("python", "-m", "build")
+    session.run("python", "-m", "build", "--installer=uv", *session.posargs)
     dists = glob.glob("dist/*")
     session.run("twine", "check", *dists, silent=True)
 
