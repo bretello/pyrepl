@@ -52,6 +52,6 @@ setup(
             "pytest-timeout",
             "pexpect",
         ],
-        "dev": ["ruff==0.9.3", "pyrepl[tests]"],
+        "dev": ["ruff==0.11.2", "pyrepl[tests]"],
     },
 )
