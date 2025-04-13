@@ -32,6 +32,10 @@ dynamic = ["version"]
 homepage = "https://github.com/bretello/pyrepl"
 issues = "https://github.com/bretello/pyrepl/issues"
 
+[project.scripts]
+pythoni = "pyrepl.pythoni:main"
+pythoni1 = "pyrepl.python1:main"
+
 [project.optional-dependencies]
 tests = [
     "pytest",

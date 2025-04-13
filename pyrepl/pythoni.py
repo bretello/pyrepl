@@ -24,4 +24,5 @@ import sys
 from pyrepl import cmdrepl
 from pyrepl.python_reader import main
 
-main()
+if __name__ == "__main__":
+    main()
