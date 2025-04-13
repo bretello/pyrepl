@@ -19,39 +19,6 @@
 
 from setuptools import setup
 
-long_desc = """
-pyrepl is a Python library, inspired by readline, for building flexible
-command line interfaces, featuring:
-* sane multi-line editing
-* history, with incremental search
-* completion, including displaying of available options
-* a fairly large subset of the readline emacs-mode keybindings
-* a liberal, Python-style, license
-* a new python top-level.
-"""
-
-
 setup(
-    name="pyrepl",
-    setup_requires="setuptools_scm",
-    author="Michael Hudson-Doyle",
-    author_email="micahel@gmail.com",
-    maintainer="Daniel Hahler",
-    url="https://github.com/pypy/pyrepl",
-    license="MIT X11 style",
-    description="A library for building flexible command line interfaces",
-    platforms=["unix", "linux"],
-    packages=["pyrepl"],
     scripts=["pythoni", "pythoni1"],
-    long_description=long_desc,
-    long_description_content_type="text/x-rst",
-    extras_require={
-        "tests": [
-            "pytest",
-            "pytest-coverage",
-            "pytest-timeout",
-            "pexpect",
-        ],
-        "dev": ["ruff==0.9.3", "pyrepl[tests]"],
-    },
 )
