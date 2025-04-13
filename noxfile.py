@@ -35,7 +35,7 @@ def tests(session: nox.Session) -> None:
 def lint(session: nox.Session) -> None:
     session.install("-e", ".[dev]")
 
-    session.run("ruff", "check", "setup.py", "pyrepl", "tests", "pythoni", "pythoni1")
+    session.run("ruff", "check", "setup.py", "pyrepl", "tests")
 
     # session.run("python", "-m", "mypy")
 
