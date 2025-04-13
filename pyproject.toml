@@ -1,3 +1,52 @@
+[build-system]
+requires = ["setuptools_scm[toml]>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyrepl"
+description = "A library for building flexible command line interfaces"
+readme = "README.md"
+license = {text = "MIT X11 style"}
+authors = [{name = "Michael Hudson-Doyle", email = "micahel@gmail.com"}]
+maintainers = [{name = "bretello", email = "bretello@distruzione.org"}]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "License :: OSI Approved :: BSD License",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Intended Audience :: Developers",
+  "Operating System :: POSIX",
+  "Operating System :: Microsoft :: Windows",
+  "Topic :: Utilities"
+]
+keywords = ["readline", "shell"]
+requires-python = ">=3.8"
+dynamic = ["version"]
+
+[project.urls]
+homepage = "https://github.com/bretello/pyrepl"
+issues = "https://github.com/bretello/pyrepl/issues"
+
+[project.optional-dependencies]
+tests = [
+    "pytest",
+    "pytest-coverage",
+    "pytest-timeout",
+    "pexpect",
+]
+dev = [
+    "ruff==0.9.3",
+    "pyrepl[tests]"
+]
+
+[tool.setuptools]
+packages = ["pyrepl"]
+
 [tool.setuptools_scm]
 write_to = "pyrepl/_version.py"
 
