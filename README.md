@@ -28,7 +28,7 @@ it, and use it as my python top-level most of the time.
 To get a feel for it, just execute:
 
 ```bash
-python pythoni
+python pyrepl/pythoni.py
 ```
 
 (One point that may confuse: because the arrow keys are used to move
