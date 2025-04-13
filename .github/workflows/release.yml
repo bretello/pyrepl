@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
+  release:
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -15,16 +15,22 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
+          python-version: "3.13"
       - name: Install requirements
         run: |
-          pip install -U pip twine build
+          pip install -U twine nox[uv]==2025.2.9
       - name: Build
-        run: python -m build
-      - run: check-manifest
-      - run: twine check dist/*
+        run: nox -s build
+      - name:
+        if: ! startsWith(github.ref , 'refs/tags/')
+        run: |
+          echo "::warning::Not a tag, not uploading to PyPi"
+          ls -l dist/*
       - name: Publish to PyPI
+        if: startsWith(github.ref, 'refs/tags/')
         env:
           TWINE_USERNAME: "__token__"
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
-        run: twine upload dist/*
+        run: |
+          echo ${{github.ref}}
+          twine upload dist/*
