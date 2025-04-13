@@ -18,6 +18,18 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+import sys
+
+if sys.version_info >= (3, 13):
+    import warnings
+
+    warnings.warn(
+        "pyrepl has been integrated in python since version 3.13, "
+        "making this project deprecated. "
+        "See https://docs.python.org/3/whatsnew/3.13.html#a-better-interactive-interpreter "  # noqa: E501
+        "for more information",
+        stacklevel=2,
+    )
 
 try:
     from ._version import version as __version__
