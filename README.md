@@ -39,11 +39,11 @@ and ^N to move through the history)
 
 If you like what you see, you can install it with the familiar
 
-$ pip install git+https://github.com/bretello/pyrepl
+```console
+$ pip install pyrepl
+```
 
 which will also install `pythoni` script.
-
-PyPi version coming soon
 
 ## Changelog
 
