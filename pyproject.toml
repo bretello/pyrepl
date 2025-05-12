@@ -43,7 +43,7 @@ tests = [
     "pexpect",
 ]
 dev = [
-    "ruff==0.11.8",
+    "ruff==0.11.9",
     "pyrepl[tests]"
 ]
 
