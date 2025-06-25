@@ -33,7 +33,7 @@ issues = "https://github.com/bretello/pyrepl/issues"
 
 [project.scripts]
 pythoni = "pyrepl.pythoni:main"
-pythoni1 = "pyrepl.python1:main"
+pythoni1 = "pyrepl.pythoni1:main"
 
 [project.optional-dependencies]
 tests = [
