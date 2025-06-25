@@ -17,34 +17,35 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-from typing import TYPE_CHECKING, Dict, List
+from __future__ import annotations
 
-from pyrepl import commands
-from pyrepl.reader import Reader as R
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 
-if TYPE_CHECKING:
-    from .console import Console
-    from .reader import KeyMap
+from . import commands, input
+from .reader import Reader
 
 
-isearch_keymap: "KeyMap" = (
-    *((f"\\{c:03o}", "isearch-end") for c in range(256) if chr(c) != "\\"),
-    *(
-        (c, "isearch-add-character")
-        for c in map(chr, list(range(32, 127)))
-        if c != "\\"
-    ),
-    *(
-        (f"\\{c:03o}", "isearch-add-character")
+if False:
+    from .types import SimpleContextManager, KeySpec, CommandName
+
+
+isearch_keymap: tuple[tuple[KeySpec, CommandName], ...] = tuple(
+    [("\\%03o" % c, "isearch-end") for c in range(256) if chr(c) != "\\"]
+    + [(c, "isearch-add-character") for c in map(chr, range(32, 127)) if c != "\\"]
+    + [
+        ("\\%03o" % c, "isearch-add-character")
         for c in range(256)
         if chr(c).isalpha() and chr(c) != "\\"
-    ),
-    ("\\\\", "self-insert"),
-    (r"\C-r", "isearch-backwards"),
-    (r"\C-s", "isearch-forwards"),
-    (r"\C-c", "isearch-cancel"),
-    (r"\C-g", "isearch-cancel"),
-    (r"\<backspace>", "isearch-backspace"),
+    ]
+    + [
+        ("\\\\", "self-insert"),
+        (r"\C-r", "isearch-backwards"),
+        (r"\C-s", "isearch-forwards"),
+        (r"\C-c", "isearch-cancel"),
+        (r"\C-g", "isearch-cancel"),
+        (r"\<backspace>", "isearch-backspace"),
+    ]
 )
 
 ISEARCH_DIRECTION_NONE = ""
@@ -53,7 +54,7 @@ ISEARCH_DIRECTION_FORWARDS = "f"
 
 
 class next_history(commands.Command):
-    def do(self):
+    def do(self) -> None:
         r = self.reader
         if r.historyi == len(r.history):
             r.error("end of history list")
@@ -62,7 +63,7 @@ class next_history(commands.Command):
 
 
 class previous_history(commands.Command):
-    def do(self):
+    def do(self) -> None:
         r = self.reader
         if r.historyi == 0:
             r.error("start of history list")
@@ -70,32 +71,45 @@ class previous_history(commands.Command):
         r.select_item(r.historyi - 1)
 
 
-class restore_history(commands.Command):
-    def do(self):
+class history_search_backward(commands.Command):
+    def do(self) -> None:
         r = self.reader
-        if r.historyi != len(r.history) and r.get_unicode() != r.history[r.historyi]:
-            r.buffer = list(r.history[r.historyi])
-            r.pos = len(r.buffer)
-            r.dirty = True
+        r.search_next(forwards=False)
+
+
+class history_search_forward(commands.Command):
+    def do(self) -> None:
+        r = self.reader
+        r.search_next(forwards=True)
+
+
+class restore_history(commands.Command):
+    def do(self) -> None:
+        r = self.reader
+        if r.historyi != len(r.history):
+            if r.get_unicode() != r.history[r.historyi]:
+                r.buffer = list(r.history[r.historyi])
+                r.pos = len(r.buffer)
+                r.dirty = True
 
 
 class first_history(commands.Command):
-    def do(self):
+    def do(self) -> None:
         self.reader.select_item(0)
 
 
 class last_history(commands.Command):
-    def do(self):
+    def do(self) -> None:
         self.reader.select_item(len(self.reader.history))
 
 
 class operate_and_get_next(commands.FinishCommand):
-    def do(self):
+    def do(self) -> None:
         self.reader.next_history = self.reader.historyi + 1
 
 
 class yank_arg(commands.Command):
-    def do(self):
+    def do(self) -> None:
         r = self.reader
         if r.last_command is self.__class__:
             r.yank_arg_i += 1
@@ -112,7 +126,10 @@ class yank_arg(commands.Command):
             return
         w = words[a]
         b = r.buffer
-        o = len(r.yank_arg_yanked) if r.yank_arg_i > 0 else 0
+        if r.yank_arg_i > 0:
+            o = len(r.yank_arg_yanked)
+        else:
+            o = 0
         b[r.pos - o : r.pos] = list(w)
         r.yank_arg_yanked = w
         r.pos += len(w) - o
@@ -120,7 +137,7 @@ class yank_arg(commands.Command):
 
 
 class forward_history_isearch(commands.Command):
-    def do(self):
+    def do(self) -> None:
         r = self.reader
         r.isearch_direction = ISEARCH_DIRECTION_FORWARDS
         r.isearch_start = r.historyi, r.pos
@@ -130,7 +147,7 @@ class forward_history_isearch(commands.Command):
 
 
 class reverse_history_isearch(commands.Command):
-    def do(self):
+    def do(self) -> None:
         r = self.reader
         r.isearch_direction = ISEARCH_DIRECTION_BACKWARDS
         r.dirty = True
@@ -140,7 +157,7 @@ class reverse_history_isearch(commands.Command):
 
 
 class isearch_cancel(commands.Command):
-    def do(self):
+    def do(self) -> None:
         r = self.reader
         r.isearch_direction = ISEARCH_DIRECTION_NONE
         r.pop_input_trans()
@@ -150,7 +167,7 @@ class isearch_cancel(commands.Command):
 
 
 class isearch_add_character(commands.Command):
-    def do(self):
+    def do(self) -> None:
         r = self.reader
         b = r.buffer
         r.isearch_term += self.event[-1]
@@ -161,7 +178,7 @@ class isearch_add_character(commands.Command):
 
 
 class isearch_backspace(commands.Command):
-    def do(self):
+    def do(self) -> None:
         r = self.reader
         if len(r.isearch_term) > 0:
             r.isearch_term = r.isearch_term[:-1]
@@ -171,21 +188,21 @@ class isearch_backspace(commands.Command):
 
 
 class isearch_forwards(commands.Command):
-    def do(self):
+    def do(self) -> None:
         r = self.reader
         r.isearch_direction = ISEARCH_DIRECTION_FORWARDS
         r.isearch_next()
 
 
 class isearch_backwards(commands.Command):
-    def do(self):
+    def do(self) -> None:
         r = self.reader
         r.isearch_direction = ISEARCH_DIRECTION_BACKWARDS
         r.isearch_next()
 
 
 class isearch_end(commands.Command):
-    def do(self):
+    def do(self) -> None:
         r = self.reader
         r.isearch_direction = ISEARCH_DIRECTION_NONE
         r.console.forgetinput()
@@ -193,43 +210,26 @@ class isearch_end(commands.Command):
         r.dirty = True
 
 
-class HistoricalReader(R):
+@dataclass
+class HistoricalReader(Reader):
     """Adds history support (with incremental history searching) to the
     Reader class.
-
-    Adds the following instance variables:
-      * history:
-        a list of strings
-      * historyi:
-      * transient_history:
-      * next_history:
-      * isearch_direction, isearch_term, isearch_start:
-      * yank_arg_i, yank_arg_yanked:
-        used by the yank-arg command; not actually manipulated by any
-        HistoricalReader instance methods.
     """
 
-    def collect_keymap(self) -> "KeyMap":
-        return super().collect_keymap() + (
-            (r"\C-n", "next-history"),
-            (r"\C-p", "previous-history"),
-            (r"\C-o", "operate-and-get-next"),
-            (r"\C-r", "reverse-history-isearch"),
-            (r"\C-s", "forward-history-isearch"),
-            (r"\M-r", "restore-history"),
-            (r"\M-.", "yank-arg"),
-            (r"\<page down>", "last-history"),
-            (r"\<page up>", "first-history"),
-        )
+    history: list[str] = field(default_factory=list)
+    historyi: int = 0
+    next_history: int | None = None
+    transient_history: dict[int, str] = field(default_factory=dict)
+    isearch_term: str = ""
+    isearch_direction: str = ISEARCH_DIRECTION_NONE
+    isearch_start: tuple[int, int] = field(init=False)
+    isearch_trans: input.KeymapTranslator = field(init=False)
+    yank_arg_i: int = 0
+    yank_arg_yanked: str = ""
 
-    def __init__(self, console: "Console"):
-        super().__init__(console)
-        self.history: List[str] = []
-        self.historyi = 0
-        self.transient_history: Dict[int, str] = {}
-        self.next_history = None
-        self.isearch_direction = ISEARCH_DIRECTION_NONE
-        for c in (
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        for c in [
             next_history,
             previous_history,
             restore_history,
@@ -246,32 +246,59 @@ class HistoricalReader(R):
             isearch_forwards,
             isearch_backwards,
             operate_and_get_next,
-        ):
+            history_search_backward,
+            history_search_forward,
+        ]:
             self.commands[c.__name__] = c
             self.commands[c.__name__.replace("_", "-")] = c
-        from pyrepl import input
-
+        self.isearch_start = self.historyi, self.pos
         self.isearch_trans = input.KeymapTranslator(
-            isearch_keymap,
-            invalid_cls=isearch_end,
-            character_cls=isearch_add_character,
+            isearch_keymap, invalid_cls=isearch_end, character_cls=isearch_add_character
         )
 
-    def select_item(self, i: int):
-        self.transient_history[self.historyi] = self.get_str()
+    def collect_keymap(self) -> tuple[tuple[KeySpec, CommandName], ...]:
+        return super().collect_keymap() + (
+            (r"\C-n", "next-history"),
+            (r"\C-p", "previous-history"),
+            (r"\C-o", "operate-and-get-next"),
+            (r"\C-r", "reverse-history-isearch"),
+            (r"\C-s", "forward-history-isearch"),
+            (r"\M-r", "restore-history"),
+            (r"\M-.", "yank-arg"),
+            (r"\<page down>", "history-search-forward"),
+            (r"\x1b[6~", "history-search-forward"),
+            (r"\<page up>", "history-search-backward"),
+            (r"\x1b[5~", "history-search-backward"),
+        )
+
+    def select_item(self, i: int) -> None:
+        self.transient_history[self.historyi] = self.get_unicode()
         buf = self.transient_history.get(i)
-        self.buffer = list(self.history[i] if buf is None else buf)
+        if buf is None:
+            buf = self.history[i].rstrip()
+        self.buffer = list(buf)
         self.historyi = i
         self.pos = len(self.buffer)
         self.dirty = True
+        self.last_refresh_cache.invalidated = True
 
-    def get_item(self, i):
+    def get_item(self, i: int) -> str:
         if i != len(self.history):
             return self.transient_history.get(i, self.history[i])
+        else:
+            return self.transient_history.get(i, self.get_unicode())
 
-        return self.transient_history.get(i, self.get_str())
+    @contextmanager
+    def suspend(self) -> SimpleContextManager:
+        with super().suspend():
+            try:
+                old_history = self.history[:]
+                del self.history[:]
+                yield
+            finally:
+                self.history[:] = old_history
 
-    def prepare(self):
+    def prepare(self) -> None:
         super().prepare()
         try:
             self.transient_history = {}
@@ -287,59 +314,102 @@ class HistoricalReader(R):
             self.restore()
             raise
 
-    def get_prompt(self, lineno, cursor_on_line):
+    def get_prompt(self, lineno: int, cursor_on_line: bool) -> str:
         if cursor_on_line and self.isearch_direction != ISEARCH_DIRECTION_NONE:
             d = "rf"[self.isearch_direction == ISEARCH_DIRECTION_FORWARDS]
-            return f"({d}-search `{self.isearch_term}') "
+            return "(%s-search `%s') " % (d, self.isearch_term)
+        else:
+            return super().get_prompt(lineno, cursor_on_line)
 
-        return super().get_prompt(lineno, cursor_on_line)
+    def search_next(self, *, forwards: bool) -> None:
+        """Search history for the current line contents up to the cursor.
 
-    def isearch_next(self):
+        Selects the first item found. If nothing is under the cursor, any next
+        item in history is selected.
+        """
+        pos = self.pos
+        s = self.get_unicode()
+        history_index = self.historyi
+
+        # In multiline contexts, we're only interested in the current line.
+        nl_index = s.rfind('\n', 0, pos)
+        prefix = s[nl_index + 1:pos]
+        pos = len(prefix)
+
+        match_prefix = len(prefix)
+        len_item = 0
+        if history_index < len(self.history):
+            len_item = len(self.get_item(history_index))
+        if len_item and pos == len_item:
+            match_prefix = False
+        elif not pos:
+            match_prefix = False
+
+        while 1:
+            if forwards:
+                out_of_bounds = history_index >= len(self.history) - 1
+            else:
+                out_of_bounds = history_index == 0
+            if out_of_bounds:
+                if forwards and not match_prefix:
+                    self.pos = 0
+                    self.buffer = []
+                    self.dirty = True
+                else:
+                    self.error("not found")
+                return
+
+            history_index += 1 if forwards else -1
+            s = self.get_item(history_index)
+
+            if not match_prefix:
+                self.select_item(history_index)
+                return
+
+            len_acc = 0
+            for i, line in enumerate(s.splitlines(keepends=True)):
+                if line.startswith(prefix):
+                    self.select_item(history_index)
+                    self.pos = pos + len_acc
+                    return
+                len_acc += len(line)
+
+    def isearch_next(self) -> None:
         st = self.isearch_term
         p = self.pos
         i = self.historyi
-        s = self.get_str()
+        s = self.get_unicode()
         forwards = self.isearch_direction == ISEARCH_DIRECTION_FORWARDS
-        while True:
-            p = s.find(st, p + 1) if forwards else s.rfind(st, 0, p + len(st) - 1)
+        while 1:
+            if forwards:
+                p = s.find(st, p + 1)
+            else:
+                p = s.rfind(st, 0, p + len(st) - 1)
             if p != -1:
                 self.select_item(i)
                 self.pos = p
                 return
-            if (forwards and i == len(self.history) - 1) or (not forwards and i == 0):
+            elif (forwards and i >= len(self.history) - 1) or (not forwards and i == 0):
                 self.error("not found")
                 return
-
-            if forwards:
-                i += 1
-                s = self.get_item(i)
-                p = -1
             else:
-                i -= 1
-                s = self.get_item(i)
-                p = len(s)
+                if forwards:
+                    i += 1
+                    s = self.get_item(i)
+                    p = -1
+                else:
+                    i -= 1
+                    s = self.get_item(i)
+                    p = len(s)
 
-    def finish(self):
+    def finish(self) -> None:
         super().finish()
-        ret = self.get_str()
-        for i, t in list(self.transient_history.items()):
+        ret = self.get_unicode()
+        for i, t in self.transient_history.items():
             if i < len(self.history) and i != self.historyi:
                 self.history[i] = t
-        if ret:
+        if ret and should_auto_add_history:
             self.history.append(ret)
 
 
-def test():
-    from pyrepl.unix_console import UnixConsole
-
-    reader = HistoricalReader(UnixConsole())
-    reader.ps1 = "h**> "
-    reader.ps2 = "h/*> "
-    reader.ps3 = "h|*> "
-    reader.ps4 = r"h\*> "
-    while reader.readline():
-        pass
-
-
-if __name__ == "__main__":
-    test()
+should_auto_add_history = True

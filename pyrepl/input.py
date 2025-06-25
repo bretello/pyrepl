@@ -33,43 +33,36 @@
 # [meta-key] is identified with [esc key].  We demand that any console
 # class does quite a lot towards emulating a unix terminal.
 
-import abc
-import pprint
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
 import unicodedata
 from collections import deque
-from typing import TYPE_CHECKING, Deque, List, Optional, Tuple
-
-from .trace import trace
-
-if TYPE_CHECKING:
-    from .console import Event
-    from .reader import KeyMap
 
 
-class InputTranslator(abc.ABC):
-    @abc.abstractmethod
-    def push(self, event: "Event"):
-        raise NotImplementedError
+# types
+if False:
+    from .types import EventTuple
 
-    @abc.abstractmethod
-    def get(self):
-        raise NotImplementedError
 
-    @abc.abstractmethod
-    def empty(self):
-        raise NotImplementedError
+class InputTranslator(ABC):
+    @abstractmethod
+    def push(self, evt: EventTuple) -> None:
+        pass
+
+    @abstractmethod
+    def get(self) -> EventTuple | None:
+        return None
+
+    @abstractmethod
+    def empty(self) -> bool:
+        return True
 
 
 class KeymapTranslator(InputTranslator):
-    def __init__(
-        self,
-        keymap: "KeyMap",
-        verbose: bool = False,
-        invalid_cls: Optional[str] = None,  # FIXME: add type
-        character_cls: Optional[str] = None,  # FIXME: add type
-    ):
+    def __init__(self, keymap, verbose=False, invalid_cls=None, character_cls=None):
         self.verbose = verbose
-        from pyrepl.keymap import compile_keymap, parse_keys
+        from .keymap import compile_keymap, parse_keys
 
         self.keymap = keymap
         self.invalid_cls = invalid_cls
@@ -78,43 +71,44 @@ class KeymapTranslator(InputTranslator):
         for keyspec, command in keymap:
             keyseq = tuple(parse_keys(keyspec))
             d[keyseq] = command
-        if verbose:
-            trace("[input] keymap: {}", pprint.pformat(d))
+        if self.verbose:
+            print(d)
         self.k = self.ck = compile_keymap(d, ())
-        self.results: Deque[Tuple[str, List[str]]] = deque()
-        self.stack: List[str] = []
+        self.results = deque()
+        self.stack = []
 
-    def push(self, event: "Event"):
-        trace("[input] pushed {!r}", event.data)
-        key = event.data
+    def push(self, evt):
+        if self.verbose:
+            print("pushed", evt.data, end="")
+        key = evt.data
         d = self.k.get(key)
         if isinstance(d, dict):
-            trace("[input] transition")
+            if self.verbose:
+                print("transition")
             self.stack.append(key)
             self.k = d
-            return
-
-        if d is None:
-            trace("[input] invalid")
-            if self.stack or len(key) > 1 or unicodedata.category(key) == "C":
-                assert self.invalid_cls
-                self.results.append((self.invalid_cls, self.stack + [key]))
-            else:
-                assert self.character_cls
-                # small optimization:
-                self.k[key] = self.character_cls
-                self.results.append((self.character_cls, [key]))
         else:
-            trace("[input] matched {}", d)
-            self.results.append((d, self.stack + [key]))
-        self.stack = []
-        self.k = self.ck
+            if d is None:
+                if self.verbose:
+                    print("invalid")
+                if self.stack or len(key) > 1 or unicodedata.category(key) == "C":
+                    self.results.append((self.invalid_cls, self.stack + [key]))
+                else:
+                    # small optimization:
+                    self.k[key] = self.character_cls
+                    self.results.append((self.character_cls, [key]))
+            else:
+                if self.verbose:
+                    print("matched", d)
+                self.results.append((d, self.stack + [key]))
+            self.stack = []
+            self.k = self.ck
 
     def get(self):
-        if not self.results:
+        if self.results:
+            return self.results.popleft()
+        else:
             return None
-
-        return self.results.popleft()
 
     def empty(self) -> bool:
         return not self.results

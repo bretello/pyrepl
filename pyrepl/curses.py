@@ -19,4 +19,15 @@
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 
-from ._minimal_curses import error, setupterm, tigetstr, tparm
+try:
+    import _curses
+except ImportError:
+    try:
+        import curses as _curses  # type: ignore[no-redef]
+    except ImportError:
+        from . import _minimal_curses as _curses  # type: ignore[no-redef]
+
+setupterm = _curses.setupterm
+tigetstr = _curses.tigetstr
+tparm = _curses.tparm
+error = _curses.error

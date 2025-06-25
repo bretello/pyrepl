@@ -9,6 +9,7 @@ import sys
 
 from pyrepl import readline
 from pyrepl.simple_interact import run_multiline_interactive_console
+from pyrepl.unix_console import UnixConsole
 
 sys.modules["readline"] = readline
 
@@ -21,7 +22,12 @@ def main():
         exec(code)
 
     print("Python", sys.version)
-    run_multiline_interactive_console()
+    run_multiline_interactive_console(
+        UnixConsole(
+            os.dup(0),
+            os.dup(1),
+        ),
+    )
 
 
 if __name__ == "__main__":

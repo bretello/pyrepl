@@ -1,20 +1,21 @@
-import logging
+from __future__ import annotations
+
 import os
 
-logger = logging.getLogger("PYREPL_TRACE")
-
-trace_filename = os.environ.get("PYREPL_TRACE")
-
-if trace_filename:
-    logger.setLevel(logging.DEBUG)
-    fh = logging.FileHandler(trace_filename)
-    fh.setLevel(logging.DEBUG)
-    logger.addHandler(fh)
+# types
+if False:
+    from typing import IO
 
 
-def trace(line, *k, **kw):
-    if not trace_filename:
+trace_file: IO[str] | None = None
+if trace_filename := os.environ.get("PYREPL_TRACE"):
+    trace_file = open(trace_filename, "a")
+
+
+def trace(line: str, *k: object, **kw: object) -> None:
+    if trace_file is None:
         return
     if k or kw:
         line = line.format(*k, **kw)
-    logger.debug(line)
+    trace_file.write(line + "\n")
+    trace_file.flush()

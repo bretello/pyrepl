@@ -19,10 +19,20 @@
 # CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN
 # CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+import os
 import sys
 
-from pyrepl import cmdrepl
-from pyrepl.python_reader import main
+from pyrepl.simple_interact import run_multiline_interactive_console
+from pyrepl.unix_console import UnixConsole
+
+
+def main():
+    run_multiline_interactive_console(
+        UnixConsole(
+            os.dup(0),
+            os.dup(1),
+        ),
+    )
 
 if __name__ == "__main__":
     main()
