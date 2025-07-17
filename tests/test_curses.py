@@ -2,16 +2,27 @@ import sys
 
 import pytest
 
-import pyrepl
-from pyrepl.curses import setupterm
+from pyrepl._minimal_curses import error, setupterm
 
 
-def test_setupterm(monkeypatch):
+@pytest.mark.xfail(sys.platform == "win32", reason="windows does not have _curses")
+def test_imports():
+    import _curses
+
+    from pyrepl.curses import error, setupterm, tigetstr, tparm
+
+    assert setupterm is _curses.setupterm
+    assert tigetstr is _curses.tigetstr
+    assert tparm is _curses.tparm
+    assert error is _curses.error
+
+
+def test_minimal_curses_setupterm(monkeypatch):
     assert setupterm(None, 0) is None
 
     exit_code = -1 if sys.platform == "darwin" else 0
     with pytest.raises(
-        pyrepl._minimal_curses.error,
+        error,
         match=rf"setupterm\(b?'term_does_not_exist', 0\) failed \(err={exit_code}\)",
     ):
         setupterm("term_does_not_exist", 0)
@@ -21,7 +32,7 @@ def test_setupterm(monkeypatch):
 
     monkeypatch.delenv("TERM")
     with pytest.raises(
-        pyrepl._minimal_curses.error,
+        error,
         match=r"setupterm\(None, 0\) failed \(err=-1\)",
     ):
         setupterm(None, 0)
