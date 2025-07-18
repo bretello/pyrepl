@@ -1,6 +1,10 @@
-name: Publish package to PyPI
+name: release
+run-name: ${{ (github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags'))) && 'Publish to PyPI' || '(dry run) Publish to PyPI' }}
 
 on:
+  push:
+    branches:
+      - "master"
   release:
     types:
       - published
@@ -9,28 +13,47 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v5
         with:
           python-version: "3.13"
+      - name: check if release
+        id: is-release
+        run: |
+          is_release=${{(github.event_name == 'release') || (github.event_name == 'workflow_dispatch' && startsWith(github.ref, 'refs/tags'))}}
+          echo "value=${is_release}" | tee -a "${GITHUB_OUTPUT}"
       - name: Install requirements
         run: |
           uv pip install -U twine nox==2025.5.1
       - name: Build
         run: nox -s build
+
       - name:
-        if: ! startsWith(github.ref , 'refs/tags/')
+        if: ${{ steps.is-release.outputs.value == 'false' }}
         run: |
-          echo "::warning::Not a tag, not uploading to PyPi"
+          echo "::warning::Not a release, not uploading to PyPi"
           ls -l dist/*
+
       - name: Publish to PyPI
-        if: startsWith(github.ref, 'refs/tags/')
+        if: ${{ steps.is-release.outputs.value == 'true' }}
         env:
           TWINE_USERNAME: "__token__"
           TWINE_PASSWORD: ${{ secrets.PYPI_TOKEN }}
         run: |
-          echo ${{github.ref}}
           twine upload dist/*
+      - name: Upload wheel
+        uses: actions/upload-artifact@v4
+        if: ${{steps.is-release.outputs.value == 'true' }}
+        with:
+          name: "wheel"
+          path: dist/*whl
+
+      - name: Upload sdist
+        uses: actions/upload-artifact@v4
+        if: ${{steps.is-release.outputs.value == 'true' }}
+        with:
+          name: "sdist"
+          path: dist/*.tar.gz
