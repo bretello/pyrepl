@@ -23,10 +23,15 @@ nox.options.sessions = "lint", "tests"
 )
 def tests(session: nox.Session) -> None:
     session.install(".[tests]")
+    pytest_args = [
+        "--cov-config=pyproject.toml",
+    ]
+    if session.python == "3.13":
+        pytest_args.extend(["-W", "ignore::UserWarning"])
+    pytest_args.extend(session.posargs)
     session.run(
         "pytest",
-        "--cov-config=pyproject.toml",
-        *session.posargs,
+        *pytest_args,
         env={"COVERAGE_FILE": f".coverage.{session.python}"},
     )
 
